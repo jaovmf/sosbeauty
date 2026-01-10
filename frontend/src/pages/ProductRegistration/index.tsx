@@ -254,10 +254,11 @@ const ProductRegistration = () => {
         formDataToSend.append('image', formData.image);
       }
 
-      // Criar produto via API
-      await fetch(`${getApiUrl()}/produtos`, {
-        method: 'POST',
-        body: formDataToSend
+      // Criar produto via API (usando axios que já tem token configurado)
+      await api.post('/produtos', formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
       toast.success('Produto cadastrado com sucesso!');
