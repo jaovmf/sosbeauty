@@ -2,7 +2,32 @@ import React, { createContext, useState, useContext, useEffect, ReactNode } from
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const API_URL = 'http://localhost:3003/api';
+// Função para obter URL da API (mesma lógica do api.ts)
+const getApiUrl = () => {
+  // Se houver variável de ambiente VITE_API_URL, usar ela (produção)
+  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== '') {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // Para desenvolvimento, detectar se estamos acessando via IP da rede
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+
+    // IPs específicos da rede local
+    if (hostname === '192.168.1.7' || hostname === '192.168.1.9') {
+      return `http://${hostname}:3003/api`;
+    }
+
+    // Qualquer outro IP
+    if (hostname.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+      return `http://${hostname}:3003/api`;
+    }
+  }
+
+  return 'http://localhost:3003/api';
+};
+
+const API_URL = getApiUrl();
 
 export interface Usuario {
   id: string;

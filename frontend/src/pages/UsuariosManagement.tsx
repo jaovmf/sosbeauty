@@ -30,8 +30,26 @@ import {
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../lib/api';
 
-const API_URL = 'http://localhost:3003/api';
+// Função para obter URL da API (mesma lógica do api.ts)
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== '') {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === '192.168.1.7' || hostname === '192.168.1.9') {
+      return `http://${hostname}:3003/api`;
+    }
+    if (hostname.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+      return `http://${hostname}:3003/api`;
+    }
+  }
+  return 'http://localhost:3003/api';
+};
+
+const API_URL = getApiUrl();
 
 interface Usuario {
   id: string;

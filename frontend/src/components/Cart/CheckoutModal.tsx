@@ -28,6 +28,23 @@ import { useClientes } from '../../hooks/useClientes';
 import { formatCurrency } from '../../utils/formatCurrency';
 import type { Cliente } from '../../types/api';
 
+// Função para obter URL da API
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== '') {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === '192.168.1.7' || hostname === '192.168.1.9') {
+      return `http://${hostname}:3003/api`;
+    }
+    if (hostname.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+      return `http://${hostname}:3003/api`;
+    }
+  }
+  return 'http://localhost:3003/api';
+};
+
 interface CheckoutModalProps {
   open: boolean;
   onClose: () => void;
@@ -184,7 +201,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose, onComplete
         }))
       };
 
-      const response = await fetch('http://localhost:3003/api/vendas/catalog', {
+      const response = await fetch(`${getApiUrl()}/vendas/catalog`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

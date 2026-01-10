@@ -27,6 +27,23 @@ import { useProdutos } from '../../hooks/useProdutos';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
+// Função para obter URL da API
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== '') {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === '192.168.1.7' || hostname === '192.168.1.9') {
+      return `http://${hostname}:3003/api`;
+    }
+    if (hostname.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+      return `http://${hostname}:3003/api`;
+    }
+  }
+  return 'http://localhost:3003/api';
+};
+
 interface Fornecedor {
   id: string;
   nome: string;
@@ -238,7 +255,7 @@ const ProductRegistration = () => {
       }
 
       // Criar produto via API
-      await fetch('http://localhost:3003/api/produtos', {
+      await fetch(`${getApiUrl()}/produtos`, {
         method: 'POST',
         body: formDataToSend
       });

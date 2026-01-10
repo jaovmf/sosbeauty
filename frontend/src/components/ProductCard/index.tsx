@@ -15,6 +15,7 @@ import {
 import { formatCurrency } from '../../utils/formatCurrency';
 import { useCart } from '../../contexts/CartContext';
 import type { Produto } from '../../types/api';
+import { getServerUrl } from '../../lib/apiUrl';
 
 interface ProductCardProps {
   produto: Produto;
@@ -24,7 +25,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ produto }) => {
   const { addItem } = useCart();
 
   const imageUrl = produto.image
-    ? `http://localhost:3003${produto.image}`
+    ? `${getServerUrl()}${produto.image}`
     : '/placeholder-product.jpg';
 
   // Calcular desconto percentual se há preço promocional
