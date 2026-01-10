@@ -24,7 +24,7 @@ import {
 } from '@mui/icons-material';
 import { formatCurrency } from '../../utils/formatCurrency';
 import api from '../../lib/api';
-import { getServerUrl } from '../../lib/apiUrl';
+import { getImageUrl } from '../../lib/apiUrl';
 
 interface Fornecedor {
   id: string;
@@ -87,7 +87,7 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
         image: null,
         currentImage: product.image || ''
       });
-      setImagePreview(product.image ? `${getServerUrl()}${product.image}` : null);
+      setImagePreview(product.image ? getImageUrl(product.image) : null);
       hasNewImageRef.current = false;
     }
     setError('');
@@ -101,7 +101,7 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
           ...prev,
           currentImage: produtoAtualizado.image || ''
         }));
-        setImagePreview(produtoAtualizado.image ? `${getServerUrl()}${produtoAtualizado.image}` : null);
+        setImagePreview(produtoAtualizado.image ? getImageUrl(produtoAtualizado.image) : null);
       }
     }
   }, [produtos, product]);
@@ -148,7 +148,7 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
       setFormData(prev => ({ ...prev, image: null }));
       hasNewImageRef.current = false;
       if (formData.currentImage) {
-        setImagePreview(`${getServerUrl()}${formData.currentImage}`);
+        setImagePreview(getImageUrl(formData.currentImage));
       } else {
         setImagePreview(null);
       }

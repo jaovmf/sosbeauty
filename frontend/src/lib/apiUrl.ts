@@ -29,3 +29,16 @@ export const getServerUrl = (): string => {
   const apiUrl = getApiUrl();
   return apiUrl.replace(/\/api$/, '');
 };
+
+// Função para obter URL da imagem (compatível com Cloudinary e uploads locais)
+export const getImageUrl = (imagePath: string | undefined): string => {
+  if (!imagePath) return '/placeholder-product.jpg';
+
+  // Se já é uma URL completa (Cloudinary ou outra CDN), retornar como está
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+
+  // Se é um path relativo (uploads locais antigos), adicionar servidor
+  return `${getServerUrl()}${imagePath}`;
+};

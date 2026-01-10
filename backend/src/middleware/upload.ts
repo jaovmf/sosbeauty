@@ -1,22 +1,15 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import cloudinary from '../config/cloudinary';
 
-const uploadDir = path.join(__dirname, '../../uploads/produtos');
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const extension = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + extension);
-  }
+// Configuração do storage do Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'sosbeauty/produtos', // Pasta no Cloudinary
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    transformation: [{ width: 1000, height: 1000, crop: 'limit' }] // Otimização automática
+  } as any
 });
 
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {

@@ -2,10 +2,20 @@ import { Router, Request, Response } from 'express';
 import Produto from '../models/Produto';
 import { uploadProduto } from '../middleware/upload';
 import { authenticate } from '../middleware/auth';
-import path from 'path';
-import fs from 'fs';
+import cloudinary from '../config/cloudinary';
 
 const router = Router();
+
+// Helper para extrair public_id de URL do Cloudinary
+const extractPublicId = (url: string): string | null => {
+  try {
+    // URL do Cloudinary: https://res.cloudinary.com/cloud-name/image/upload/v1234567890/folder/filename.ext
+    const matches = url.match(/\/sosbeauty\/produtos\/([^/.]+)/);
+    return matches ? `sosbeauty/produtos/${matches[1]}` : null;
+  } catch {
+    return null;
+  }
+};
 
 // Todas as rotas de produtos requerem autenticação
 router.use(authenticate);
@@ -16,16 +26,13 @@ router.post('/', uploadProduto.single('image'), async (req: Request, res: Respon
     const { name, brand, description, category, cost, price, promotional_price, stock } = req.body;
 
     if (!name || price === undefined || stock === undefined) {
-      if (req.file) {
-        fs.unlink(req.file.path, (unlinkErr) => {
-          if (unlinkErr) console.error('Erro ao remover arquivo:', unlinkErr);
-        });
-      }
+      // Com Cloudinary, não precisa remover arquivo manualmente (já está na nuvem)
       res.status(400).json({ error: 'Nome, preço e estoque são obrigatórios' });
       return;
     }
 
-    const imagePath = req.file ? `/uploads/produtos/${req.file.filename}` : undefined;
+    // Cloudinary retorna a URL completa da imagem
+    const imagePath = req.file ? (req.file as any).path : undefined;
 
     const produto = new Produto({
       name,
@@ -48,13 +55,6 @@ router.post('/', uploadProduto.single('image'), async (req: Request, res: Respon
     });
   } catch (error) {
     console.error('Erro ao adicionar produto:', error);
-
-    if (req.file) {
-      fs.unlink(req.file.path, (unlinkErr) => {
-        if (unlinkErr) console.error('Erro ao remover arquivo:', unlinkErr);
-      });
-    }
-
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
@@ -148,24 +148,34 @@ router.put('/:id', uploadProduto.single('image'), async (req: Request, res: Resp
     const produtoAtual = await Produto.findOne({ _id: id, ativo: true });
 
     if (!produtoAtual) {
-      if (req.file) {
-        fs.unlink(req.file.path, (unlinkErr) => {
-          if (unlinkErr) console.error('Erro ao remover arquivo:', unlinkErr);
-        });
-      }
       res.status(404).json({ error: 'Produto não encontrado' });
       return;
     }
 
     const oldImagePath = produtoAtual.image;
+    const oldImagePublicId = oldImagePath ? extractPublicId(oldImagePath) : null;
     let newImagePath;
 
     if (req.file) {
-      // Nova imagem foi enviada
-      newImagePath = `/uploads/produtos/${req.file.filename}`;
+      // Nova imagem foi enviada - Cloudinary retorna URL completa
+      newImagePath = (req.file as any).path;
+
+      // Remover imagem antiga do Cloudinary se existir
+      if (oldImagePublicId) {
+        cloudinary.uploader.destroy(oldImagePublicId).catch((err) => {
+          console.error('Erro ao remover imagem antiga do Cloudinary:', err);
+        });
+      }
     } else if (removeImage === 'true') {
       // Usuário quer remover a imagem
       newImagePath = undefined;
+
+      // Remover do Cloudinary
+      if (oldImagePublicId) {
+        cloudinary.uploader.destroy(oldImagePublicId).catch((err) => {
+          console.error('Erro ao remover imagem do Cloudinary:', err);
+        });
+      }
     } else {
       // Manter imagem atual
       newImagePath = oldImagePath;
@@ -189,24 +199,9 @@ router.put('/:id', uploadProduto.single('image'), async (req: Request, res: Resp
 
     await Produto.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
 
-    // Remover arquivo físico quando necessário
-    if ((req.file || removeImage === 'true') && oldImagePath) {
-      const oldFilePath = path.join(__dirname, '../../', oldImagePath);
-      fs.unlink(oldFilePath, (unlinkErr) => {
-        if (unlinkErr) console.error('Erro ao remover imagem antiga:', unlinkErr);
-      });
-    }
-
     res.json({ message: 'Produto atualizado com sucesso', image: newImagePath });
   } catch (error) {
     console.error('Erro ao atualizar produto:', error);
-
-    if (req.file) {
-      fs.unlink(req.file.path, (unlinkErr) => {
-        if (unlinkErr) console.error('Erro ao remover arquivo:', unlinkErr);
-      });
-    }
-
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
