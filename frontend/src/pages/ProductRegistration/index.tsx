@@ -186,9 +186,7 @@ const ProductRegistration = () => {
       newErrors.brand = 'Marca é obrigatória';
     }
 
-    if (!formData.description.trim()) {
-      newErrors.description = 'Descrição é obrigatória';
-    }
+    // Descrição não é obrigatória
 
     if (!formData.category) {
       newErrors.category = 'Categoria é obrigatória';
@@ -488,14 +486,13 @@ const ProductRegistration = () => {
                     <Grid item xs={12} {...({} as any)}>
                       <TextField
                         fullWidth
-                        label="Descrição"
+                        label="Descrição (opcional)"
                         multiline
                         rows={3}
                         value={formData.description}
                         onChange={(e) => handleInputChange('description', e.target.value)}
                         error={!!errors.description}
                         helperText={errors.description}
-                        required
                         sx={{
                           minWidth: '200px',
                           '& .MuiInputBase-root': {
