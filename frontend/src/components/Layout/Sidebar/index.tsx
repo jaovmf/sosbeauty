@@ -41,28 +41,28 @@ import { useAuth } from '../../../contexts/AuthContext';
 
 const drawerWidth = 280;
 
-interface MenuItem {
+interface MenuItemType {
   text: string;
   icon: JSX.Element;
   path: string;
-  color?: string;
+  highlight?: boolean;
 }
 
-const menuItems: MenuItem[] = [
-  { text: 'Dashboard', icon: <HomeIcon />, path: '/', color: '#1976d2' },
-  { text: 'Nova Venda', icon: <ShoppingCartIcon />, path: '/sales', color: '#2e7d32' },
-  { text: 'Catálogo', icon: <StorefrontIcon />, path: '/catalog', color: '#ed6c02' },
-  { text: 'Gerenciar Vendas', icon: <ViewListIcon />, path: '/sales-management', color: '#9c27b0' },
-  { text: 'Estoque', icon: <InventoryIcon />, path: '/stock', color: '#0288d1' },
-  { text: 'Relatórios', icon: <AssessmentIcon />, path: '/reports', color: '#d32f2f' },
+const menuItems: MenuItemType[] = [
+  { text: 'Dashboard', icon: <HomeIcon />, path: '/' },
+  { text: 'Nova Venda', icon: <ShoppingCartIcon />, path: '/sales' },
+  { text: 'Catálogo', icon: <StorefrontIcon />, path: '/catalog' },
+  { text: 'Gerenciar Vendas', icon: <ViewListIcon />, path: '/sales-management' },
+  { text: 'Estoque', icon: <InventoryIcon />, path: '/stock' },
+  { text: 'Relatórios', icon: <AssessmentIcon />, path: '/reports' },
 ];
 
-const secondaryMenuItems: MenuItem[] = [
-  { text: 'Adicionar Produto', icon: <AddBoxIcon />, path: '/products', color: '#388e3c' },
-  { text: 'Cadastrar Cliente', icon: <PersonAddIcon />, path: '/clients', color: '#1976d2' },
-  { text: 'Lista de Clientes', icon: <PeopleIcon />, path: '/clients-list', color: '#7b1fa2' },
-  { text: 'Fornecedores', icon: <BusinessIcon />, path: '/fornecedores', color: '#f57c00' },
-  { text: 'Entrada de Mercadorias', icon: <LocalShippingIcon />, path: '/entradas', color: '#0277bd' },
+const secondaryMenuItems: MenuItemType[] = [
+  { text: 'Adicionar Produto', icon: <AddBoxIcon />, path: '/products' },
+  { text: 'Cadastrar Cliente', icon: <PersonAddIcon />, path: '/clients' },
+  { text: 'Lista de Clientes', icon: <PeopleIcon />, path: '/clients-list' },
+  { text: 'Fornecedores', icon: <BusinessIcon />, path: '/fornecedores' },
+  { text: 'Entrada de Mercadorias', icon: <LocalShippingIcon />, path: '/entradas' },
 ];
 
 const Sidebar = () => {
@@ -73,83 +73,62 @@ const Sidebar = () => {
   const [open, setOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  const handleDrawerToggle = () => {
-    setOpen(!open);
-  };
+  const isActive = (path: string) => location.pathname === path;
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-  };
-
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
-
-  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleUserMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleLogout = () => {
-    handleUserMenuClose();
-    logout();
-    navigate('/login');
-  };
+  const getItemStyle = (active: boolean, highlight?: boolean) => ({
+    minHeight: 48,
+    justifyContent: open ? 'initial' : 'center',
+    px: 2,
+    borderRadius: 2,
+    color: active
+      ? theme.palette.secondary.main
+      : highlight
+      ? theme.palette.secondary.main
+      : theme.palette.text.primary,
+    backgroundColor: active
+      ? alpha(theme.palette.secondary.light, 0.25)
+      : 'transparent',
+    '&:hover': {
+      backgroundColor: active
+        ? alpha(theme.palette.secondary.light, 0.35)
+        : alpha(theme.palette.action.hover, 0.08),
+    },
+  });
 
   return (
     <Drawer
       variant="permanent"
       sx={{
         width: open ? drawerWidth : 72,
-        flexShrink: 0,
         '& .MuiDrawer-paper': {
           width: open ? drawerWidth : 72,
-          boxSizing: 'border-box',
-          transition: theme.transitions.create('width', {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
+          transition: theme.transitions.create('width'),
           overflowX: 'hidden',
-          backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fff',
+          backgroundColor: '#fff',
           borderRight: `1px solid ${theme.palette.divider}`,
         },
       }}
     >
       <Toolbar
         sx={{
-          display: 'flex',
-          alignItems: 'center',
           justifyContent: open ? 'space-between' : 'center',
-          px: open ? 2 : 1,
-          minHeight: '64px !important',
           backgroundColor: alpha(theme.palette.primary.main, 0.05),
         }}
       >
         {open && (
           <Box display="flex" alignItems="center" gap={1.5}>
-            <Avatar
-              sx={{
-                bgcolor: theme.palette.primary.main,
-                width: 40,
-                height: 40,
-              }}
-            >
-              SB
+            <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 50, height: 50 }}>
+              SOS
             </Avatar>
             <Box>
-              <Typography variant="h6" fontWeight="bold" sx={{ lineHeight: 1.2 }}>
-                SOS Beauty
-              </Typography>
+              <Typography fontWeight="bold">SOS Beauty</Typography>
               <Typography variant="caption" color="text.secondary">
                 Sistema de Gestão
               </Typography>
             </Box>
           </Box>
         )}
-        <IconButton onClick={handleDrawerToggle} size="small">
+        <IconButton onClick={() => setOpen(!open)} size="small">
           {open ? <ChevronLeftIcon /> : <MenuIcon />}
         </IconButton>
       </Toolbar>
@@ -162,28 +141,16 @@ const Sidebar = () => {
           return (
             <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
               <ListItemButton
-                onClick={() => handleNavigation(item.path)}
-                sx={{
-                  minHeight: 48,
-                  justifyContent: open ? 'initial' : 'center',
-                  px: 2,
-                  borderRadius: 2,
-                  backgroundColor: active
-                    ? alpha(item.color || theme.palette.primary.main, 0.12)
-                    : 'transparent',
-                  '&:hover': {
-                    backgroundColor: active
-                      ? alpha(item.color || theme.palette.primary.main, 0.2)
-                      : alpha(theme.palette.action.hover, 0.08),
-                  },
-                }}
+                onClick={() => navigate(item.path)}
+                sx={getItemStyle(active, item.highlight)}
               >
                 <ListItemIcon
                   sx={{
                     minWidth: 0,
                     mr: open ? 2 : 'auto',
-                    justifyContent: 'center',
-                    color: active ? item.color : 'text.secondary',
+                    color: active || item.highlight
+                      ? theme.palette.secondary.main
+                      : theme.palette.text.secondary,
                   }}
                 >
                   {item.icon}
@@ -193,8 +160,7 @@ const Sidebar = () => {
                   sx={{
                     opacity: open ? 1 : 0,
                     '& .MuiListItemText-primary': {
-                      fontWeight: active ? 600 : 400,
-                      color: active ? item.color : 'text.primary',
+                      fontWeight: active || item.highlight ? 600 : 400,
                     },
                   }}
                 />
@@ -208,7 +174,7 @@ const Sidebar = () => {
 
       <List sx={{ px: 1, py: 2 }}>
         {open && (
-          <ListItem sx={{ px: 2, mb: 1 }}>
+          <ListItem sx={{ px: 2 }}>
             <Typography variant="caption" color="text.secondary" fontWeight={600}>
               CADASTROS
             </Typography>
@@ -219,28 +185,16 @@ const Sidebar = () => {
           return (
             <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
               <ListItemButton
-                onClick={() => handleNavigation(item.path)}
-                sx={{
-                  minHeight: 48,
-                  justifyContent: open ? 'initial' : 'center',
-                  px: 2,
-                  borderRadius: 2,
-                  backgroundColor: active
-                    ? alpha(item.color || theme.palette.primary.main, 0.12)
-                    : 'transparent',
-                  '&:hover': {
-                    backgroundColor: active
-                      ? alpha(item.color || theme.palette.primary.main, 0.2)
-                      : alpha(theme.palette.action.hover, 0.08),
-                  },
-                }}
+                onClick={() => navigate(item.path)}
+                sx={getItemStyle(active)}
               >
                 <ListItemIcon
                   sx={{
                     minWidth: 0,
                     mr: open ? 2 : 'auto',
-                    justifyContent: 'center',
-                    color: active ? item.color : 'text.secondary',
+                    color: active
+                      ? theme.palette.secondary.main
+                      : theme.palette.text.secondary,
                   }}
                 >
                   {item.icon}
@@ -250,9 +204,8 @@ const Sidebar = () => {
                   sx={{
                     opacity: open ? 1 : 0,
                     '& .MuiListItemText-primary': {
-                      fontWeight: active ? 600 : 400,
                       fontSize: '0.9rem',
-                      color: active ? item.color : 'text.primary',
+                      fontWeight: active ? 600 : 400,
                     },
                   }}
                 />
@@ -263,45 +216,30 @@ const Sidebar = () => {
       </List>
 
       <Box sx={{ flexGrow: 1 }} />
-
       <Divider />
 
-      {/* User Menu */}
+      {/* User */}
       <Box sx={{ p: 2 }}>
         <ListItemButton
-          onClick={handleUserMenuOpen}
+          onClick={(e) => setAnchorEl(e.currentTarget)}
           sx={{
             borderRadius: 2,
-            p: 1.5,
             backgroundColor: alpha(theme.palette.primary.main, 0.05),
-            '&:hover': {
-              backgroundColor: alpha(theme.palette.primary.main, 0.1),
-            },
           }}
         >
           <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : 0 }}>
-            <Avatar
-              sx={{
-                bgcolor: theme.palette.primary.main,
-                width: 36,
-                height: 36,
-              }}
-            >
-              {usuario?.name?.charAt(0).toUpperCase()}
+            <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+              {usuario?.name?.charAt(0)}
             </Avatar>
           </ListItemIcon>
           {open && (
-            <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-              <Typography variant="body2" fontWeight={600} noWrap>
-                {usuario?.name}
-              </Typography>
+            <Box>
+              <Typography fontWeight={600}>{usuario?.name}</Typography>
               <Chip
                 label={usuario?.roleName || usuario?.role}
                 size="small"
                 sx={{
                   mt: 0.5,
-                  height: 20,
-                  fontSize: '0.7rem',
                   backgroundColor: alpha(theme.palette.primary.main, 0.1),
                   color: theme.palette.primary.main,
                 }}
@@ -311,47 +249,12 @@ const Sidebar = () => {
         </ListItemButton>
       </Box>
 
-      {/* User Menu Dropdown */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleUserMenuClose}
-        PaperProps={{
-          sx: {
-            width: 220,
-            mt: -1,
-          },
-        }}
-      >
-        <MenuItem disabled>
-          <Box>
-            <Typography variant="body2" fontWeight={600}>
-              {usuario?.name}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {usuario?.email}
-            </Typography>
-          </Box>
+      <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={() => setAnchorEl(null)}>
+        <MenuItem onClick={() => navigate('/perfil')}>
+          <SettingsIcon fontSize="small" sx={{ mr: 1 }} /> Meu Perfil
         </MenuItem>
-        <Divider />
-        <MenuItem onClick={() => { handleUserMenuClose(); navigate('/usuarios'); }}>
-          <ListItemIcon>
-            <ManageAccountsIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Gerenciar Usuários</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => { handleUserMenuClose(); navigate('/perfil'); }}>
-          <ListItemIcon>
-            <SettingsIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Meu Perfil</ListItemText>
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={handleLogout}>
-          <ListItemIcon>
-            <LogoutIcon fontSize="small" color="error" />
-          </ListItemIcon>
-          <ListItemText sx={{ color: 'error.main' }}>Sair</ListItemText>
+        <MenuItem onClick={() => { logout(); navigate('/login'); }}>
+          <LogoutIcon fontSize="small" color="error" sx={{ mr: 1 }} /> Sair
         </MenuItem>
       </Menu>
     </Drawer>

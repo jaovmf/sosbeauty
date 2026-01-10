@@ -23,8 +23,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 const mainActions = [
   { label: 'Home', value: '/', icon: <HomeIcon /> },
   { label: 'Vender', value: '/sales', icon: <ShoppingCartIcon /> },
-  { label: 'Catálogo', value: '/catalog', icon: <StorefrontIcon /> },
   { label: 'Estoque', value: '/stock', icon: <InventoryIcon /> },
+  { label: 'Catálogo', value: '/catalog', icon: <StorefrontIcon /> },
   { label: 'Mais', value: 'more', icon: <AssessmentIcon /> },
 ];
 
