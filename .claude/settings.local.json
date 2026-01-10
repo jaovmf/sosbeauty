@@ -19,7 +19,10 @@
       "Bash(timeout:*)",
       "Bash(powershell \"Stop-Process -Id 45188 -Force\")",
       "Bash(ping:*)",
-      "Bash(powershell \"Stop-Process -Id 51444,17864 -Force\")"
+      "Bash(powershell \"Stop-Process -Id 51444,17864 -Force\")",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

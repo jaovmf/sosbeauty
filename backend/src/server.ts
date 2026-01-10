@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import mongoose from 'mongoose';
 import { connectMongoDB } from './database/mongodb';
+import { startKeepAlive, stopKeepAlive } from './utils/keepAlive';
 
 import authRoutes from './routes/auth';
 import usuariosRoutes from './routes/usuarios';
@@ -104,10 +105,14 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`   - http://192.168.1.9:${PORT}/api`);
   console.log(`💚 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🍃 Database: MongoDB`);
+
+  // Iniciar keep-alive para evitar sleep no Render (plano free)
+  startKeepAlive(PORT);
 });
 
 process.on('SIGTERM', async () => {
   console.log('📴 Recebido SIGTERM, fechando servidor...');
+  stopKeepAlive();
   server.close(async () => {
     console.log('✅ Servidor fechado');
     await mongoose.connection.close();
@@ -118,6 +123,7 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
   console.log('📴 Recebido SIGINT, fechando servidor...');
+  stopKeepAlive();
   server.close(async () => {
     console.log('✅ Servidor fechado');
     await mongoose.connection.close();

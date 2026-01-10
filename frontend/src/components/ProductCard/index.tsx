@@ -27,7 +27,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ produto }) => {
   const imageUrl = getImageUrl(produto.image);
 
   // Calcular desconto percentual se há preço promocional
-  const hasPromotion = produto.promotional_price && produto.promotional_price > 0 && produto.promotional_price < produto.price;
+  const hasPromotion = Boolean(produto.promotional_price && produto.promotional_price > 0 && produto.promotional_price < produto.price);
   const discountPercentage = hasPromotion
     ? Math.round(((produto.price - produto.promotional_price!) / produto.price) * 100)
     : 0;
