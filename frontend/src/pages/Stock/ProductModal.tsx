@@ -210,9 +210,8 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
     formDataToSend.append('category', product.category || '');
     formDataToSend.append('cost', formData.cost.toString());
     formDataToSend.append('price', formData.price.toString());
-    if (formData.promotional_price > 0) {
-      formDataToSend.append('promotional_price', formData.promotional_price.toString());
-    }
+    // Sempre enviar promotional_price, mesmo se for 0 (para remover promoção)
+    formDataToSend.append('promotional_price', formData.promotional_price.toString());
     formDataToSend.append('stock', formData.stock.toString());
     if (formData.fornecedor_id) {
       formDataToSend.append('fornecedor_id', formData.fornecedor_id);

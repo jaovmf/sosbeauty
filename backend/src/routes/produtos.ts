@@ -179,7 +179,10 @@ router.put('/:id', uploadProduto.single('image'), async (req: Request, res: Resp
       category,
       cost: cost ? parseFloat(cost) : undefined,
       price: parseFloat(price),
-      promotional_price: promotional_price ? parseFloat(promotional_price) : undefined,
+      // Aceitar 0 para remover promoção, ou o valor informado
+      promotional_price: promotional_price !== undefined && promotional_price !== ''
+        ? parseFloat(promotional_price)
+        : undefined,
       stock: parseInt(stock),
       image: newImagePath
     };
