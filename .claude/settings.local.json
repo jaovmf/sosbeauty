@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(del \"H:\\www\\projetos\\SOSBeauty-gestao\\frontend\\src\\components\\ApiTest.tsx\")",
+      "Bash(mkdir:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(npm run build:*)",
+      "Bash(copy:*)",
+      "Bash(npm run migrate:*)",
+      "Bash(cmd /c \"taskkill /PID 34128 /F\")",
+      "Bash(dir:*)",
+      "Bash(cmd /c \"taskkill /PID 45188 /F && taskkill /PID 17864 /F\")",
+      "Bash(timeout:*)",
+      "Bash(powershell \"Stop-Process -Id 45188 -Force\")",
+      "Bash(ping:*)",
+      "Bash(powershell \"Stop-Process -Id 51444,17864 -Force\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

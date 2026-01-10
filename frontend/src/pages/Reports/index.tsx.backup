@@ -1,0 +1,641 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Container,
+  TablePagination,
+  TextField,
+  Button,
+  Grid,
+  Autocomplete,
+  Chip,
+  Card,
+  CardContent,
+  CircularProgress,
+  Alert
+} from '@mui/material';
+import {
+  Assessment as AssessmentIcon,
+  FileDownload as FileDownloadIcon,
+  PictureAsPdf as PictureAsPdfIcon
+} from '@mui/icons-material';
+import relatoriosService from '../../services/relatoriosService';
+import api from '../../lib/api';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+interface Cliente {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+interface Produto {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+}
+
+const Reports = () => {
+  // Estados para dados do backend - INTEGRAÇÃO ATIVA
+  const [vendas, setVendas] = useState<[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Produto[]>([]);
+
+  const [totalVendas, setTotalVendas] = useState(0);
+  const [faturamentoTotal, setFaturamentoTotal] = useState(0);
+  const [ticketMedio, setTicketMedio] = useState(0);
+
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
+  useEffect(() => {
+    if (startDate || endDate || selectedClient || selectedProducts.length > 0) {
+      filtrarVendas();
+    } else {
+      carregarVendas();
+    }
+  }, [startDate, endDate, selectedClient, selectedProducts]);
+
+  const carregarDados = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        carregarVendas(),
+        carregarClientes(),
+        carregarProdutos(),
+        carregarEstatisticas()
+      ]);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      setError('Erro ao carregar dados dos relatórios');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const carregarVendas = async () => {
+    try {
+      console.log('🔄 Carregando vendas do backend...');
+      const vendasData = await relatoriosService.obterVendas();
+      console.log('✅ Vendas carregadas:', vendasData);
+      setVendas(vendasData);
+    } catch (error) {
+      console.error('❌ Erro ao carregar vendas:', error);
+      throw error;
+    }
+  };
+
+  const carregarClientes = async () => {
+    try {
+      const response = await api.get('/clientes');
+      setClientes(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar clientes:', error);
+    }
+  };
+
+  const carregarProdutos = async () => {
+    try {
+      const response = await api.get('/produtos');
+      setProdutos(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar produtos:', error);
+    }
+  };
+
+  const carregarEstatisticas = async () => {
+    try {
+      const filtros: any = {};
+      if (startDate) filtros.data_inicio = startDate;
+      if (endDate) filtros.data_fim = endDate;
+
+      const relatorio = await relatoriosService.obterRelatorioVendas(filtros);
+      setTotalVendas(relatorio.quantidade_vendas);
+      setFaturamentoTotal(relatorio.total_vendas);
+      setTicketMedio(relatorio.ticket_medio);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+    }
+  };
+
+  const filtrarVendas = async () => {
+    try {
+      const filtros = {};
+
+      if (startDate) filtros.data_inicio = startDate;
+      if (endDate) filtros.data_fim = endDate;
+      if (selectedClient) filtros.cliente_id = selectedClient.id.toString();
+
+      const vendasData = await relatoriosService.obterVendas(filtros);
+
+      let vendasFiltradas = vendasData;
+
+      if (selectedProducts.length > 0) {
+        vendasFiltradas = vendasData.filter(venda => {
+          const produtoIds = venda.itens.map(item => item.produto_id);
+          return selectedProducts.some(produto => produtoIds.includes(produto.id));
+        });
+      }
+
+      setVendas(vendasFiltradas);
+      await carregarEstatisticas();
+    } catch (error) {
+      console.error('Erro ao filtrar vendas:', error);
+    }
+  };
+
+  const paginatedSales = vendas.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleChangePage = (event : any, newPage : any) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event : any) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const clearFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    setSelectedClient(null);
+    setSelectedProducts([]);
+    setPage(0);
+    carregarVendas();
+    carregarEstatisticas();
+  };
+
+  const formatCurrency = (value : number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  const formatDate = (dateString : string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
+  const exportToExcel = () => {
+    const dataToExport = vendas.map(venda => ({
+      'ID da Venda': venda.id,
+      'Data': formatDate(venda.created_at),
+      'Cliente': venda.cliente_nome,
+      'Total': venda.total,
+      'Status': venda.status,
+      'Produtos': venda.itens.map(item => `${item.produto_nome} (${item.quantidade}x)`).join(', '),
+      'Observações': venda.observacoes || ''
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatório de Vendas');
+
+    const fileName = `relatorio-vendas-${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text('Relatório de Vendas - SOS Beauty', 20, 20);
+
+    if (startDate || endDate) {
+      doc.setFontSize(12);
+      const period = `Período: ${startDate ? formatDate(startDate) : 'Início'} até ${endDate ? formatDate(endDate) : 'Hoje'}`;
+      doc.text(period, 20, 35);
+    }
+
+    doc.setFontSize(12);
+    doc.text(`Total de Vendas: ${totalVendas}`, 20, 50);
+    doc.text(`Faturamento Total: ${formatCurrency(faturamentoTotal)}`, 20, 60);
+    doc.text(`Ticket Médio: ${formatCurrency(ticketMedio)}`, 20, 70);
+
+    const tableData = vendas.map(venda => [
+      venda.id.toString(),
+      formatDate(venda.created_at),
+      venda.cliente_nome,
+      formatCurrency(venda.total),
+      venda.itens.length + ' item(s)'
+    ]);
+
+    (doc as any).autoTable({
+      head: [['ID', 'Data', 'Cliente', 'Total', 'Itens']],
+      body: tableData,
+      startY: 85,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [186, 143, 238] }
+    });
+
+    const fileName = `relatorio-vendas-${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
+  };
+
+  if (loading) {
+    return (
+      <Container maxWidth="xl">
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container maxWidth="xl">
+        <Box padding={3}>
+          <Alert severity="error">{error}</Alert>
+        </Box>
+      </Container>
+    );
+  }
+
+  return (
+    <>
+      <Container maxWidth="xl">
+        <Box padding={{ xs: 1, sm: 2, md: 3 }}>
+          <Box marginBottom={3}>
+            <Box display="flex" alignItems="center" marginBottom={{ xs: 2, md: 0 }}>
+              <AssessmentIcon sx={{ marginRight: 1, fontSize: { xs: 28, md: 32 } }} />
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{
+                  fontSize: { xs: '1.75rem', md: '2.125rem' }
+                }}
+              >
+                Relatórios de Vendas
+              </Typography>
+            </Box>
+            <Box
+              display="flex"
+              gap={1}
+              flexDirection={{ xs: "column", sm: "row" }}
+              alignItems={{ xs: "stretch", sm: "center" }}
+              marginTop={{ xs: 2, md: 0 }}
+            >
+              <Button
+                variant="outlined"
+                startIcon={<FileDownloadIcon />}
+                onClick={exportToExcel}
+                disabled={vendas.length === 0}
+                sx={{
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+                size="medium"
+              >
+                Excel
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={exportToPDF}
+                disabled={vendas.length === 0}
+                sx={{
+                  width: { xs: '100%', sm: 'auto' }
+                }}
+                size="medium"
+              >
+                PDF
+              </Button>
+            </Box>
+          </Box>
+
+          <Grid container spacing={2} marginBottom={3}>
+            <Grid item xs={12} sm={6} md={4} {...({} as any)}>
+              <Card>
+                <CardContent sx={{ padding: { xs: 2, md: 3 } }}>
+                  <Typography
+                    variant="h6"
+                    color="primary"
+                    gutterBottom
+                    sx={{
+                      fontSize: { xs: '1rem', md: '1.25rem' }
+                    }}
+                  >
+                    Total de Vendas
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontSize: { xs: '1.5rem', md: '2.125rem' }
+                    }}
+                  >
+                    {totalVendas}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4} {...({} as any)}>
+              <Card>
+                <CardContent sx={{ padding: { xs: 2, md: 3 } }}>
+                  <Typography
+                    variant="h6"
+                    color="success.main"
+                    gutterBottom
+                    sx={{
+                      fontSize: { xs: '1rem', md: '1.25rem' }
+                    }}
+                  >
+                    Faturamento Total
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontSize: { xs: '1.1rem', md: '2.125rem' }
+                    }}
+                  >
+                    {formatCurrency(faturamentoTotal)}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4} {...({} as any)}>
+              <Card>
+                <CardContent sx={{ padding: { xs: 2, md: 3 } }}>
+                  <Typography
+                    variant="h6"
+                    color="info.main"
+                    gutterBottom
+                    sx={{
+                      fontSize: { xs: '1rem', md: '1.25rem' }
+                    }}
+                  >
+                    Ticket Médio
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontSize: { xs: '1.1rem', md: '2.125rem' }
+                    }}
+                  >
+                    {formatCurrency(ticketMedio)}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          <Paper elevation={2} sx={{ padding: { xs: 2, md: 3 }, marginBottom: 3 }}>
+            <Typography
+              variant="h6"
+              marginBottom={2}
+              fontWeight="bold"
+              sx={{
+                fontSize: { xs: '1rem', md: '1.25rem' }
+              }}
+            >
+              Filtros
+            </Typography>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+                <TextField
+                  fullWidth
+                  label="Data Inicial"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(0);
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+                <TextField
+                  fullWidth
+                  label="Data Final"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(0);
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+                <Autocomplete
+                  options={clientes}
+                  getOptionLabel={(option) => option.name}
+                  value={selectedClient}
+                  onChange={(event : any, newValue : any) => {
+                    setSelectedClient(newValue);
+                    setPage(0);
+                  }}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Cliente" size="small" />
+                  )}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={3} {...({} as any)}>
+                <Autocomplete
+                  multiple
+                  options={produtos}
+                  getOptionLabel={(option) => option.name}
+                  value={selectedProducts}
+                  onChange={(event : any, newValue : any) => {
+                    setSelectedProducts(newValue);
+                    setPage(0);
+                  }}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Produtos" size="small" />
+                  )}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        variant="outlined"
+                        label={option.name}
+                        {...getTagProps({ index })}
+                        key={option.id}
+                        size="small"
+                      />
+                    ))
+                  }
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} {...({} as any)}>
+                <Button
+                  variant="outlined"
+                  onClick={clearFilters}
+                  size="small"
+                  sx={{
+                    width: { xs: '100%', sm: 'auto' }
+                  }}
+                >
+                  Limpar Filtros
+                </Button>
+              </Grid>
+            </Grid>
+          </Paper>
+
+          <Paper elevation={2}>
+            <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: 'primary.50' }}>
+                      <TableCell><strong>ID da Venda</strong></TableCell>
+                      <TableCell><strong>Data</strong></TableCell>
+                      <TableCell><strong>Cliente</strong></TableCell>
+                      <TableCell align="center"><strong>Itens</strong></TableCell>
+                      <TableCell align="center"><strong>Subtotal</strong></TableCell>
+                      <TableCell align="center"><strong>Status</strong></TableCell>
+                      <TableCell align="center"><strong>Total</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {paginatedSales.map((venda) => (
+                      <TableRow key={venda.id}>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="medium">
+                            #{venda.id}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(venda.created_at)}
+                        </TableCell>
+                        <TableCell>
+                          <Box>
+                            <Typography variant="body2" fontWeight="medium">
+                              {venda.cliente_nome}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              Status: {venda.status}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Typography variant="body2">
+                            {/* {venda.itens.length} produto(s) */}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {/* {venda.itens.reduce((sum, item) => sum + item.quantidade, 0)} unidade(s) */}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          {/* {formatCurrency(venda.itens.reduce((sum, item) => sum + item.subtotal, 0))} */}
+                        </TableCell>
+                        <TableCell align="center">
+                          <Chip
+                            label={venda.status === 'pago' ? 'PAGO' : venda.status.toUpperCase()}
+                            color={venda.status === 'pago' ? 'success' : 'warning'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Typography variant="body2" fontWeight="bold">
+                            {formatCurrency(venda.total)}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+
+            <Box sx={{ display: { xs: 'block', md: 'none' }, padding: 2 }}>
+              {paginatedSales.map((venda) => (
+                <Card key={venda.id} sx={{ marginBottom: 2, padding: 2 }}>
+                  <Box>
+                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" marginBottom={1}>
+                      <Box>
+                        <Typography variant="body2" fontWeight="bold" color="primary">
+                          #{venda.id}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {formatDate(venda.created_at)}
+                        </Typography>
+                      </Box>
+                      <Typography variant="h6" fontWeight="bold" color="success.main">
+                        {formatCurrency(venda.total)}
+                      </Typography>
+                    </Box>
+
+                    <Box marginBottom={1}>
+                      <Typography variant="body2" fontWeight="medium">
+                        {venda.cliente_nome}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        Status: {venda.status}
+                      </Typography>
+                    </Box>
+
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Box>
+                        <Typography variant="caption" color="textSecondary">
+                          {/* {venda.itens.length} produto(s) • {venda.itens.reduce((sum, item) => sum + item.quantidade, 0)} unidade(s) */}
+                        </Typography>
+                        <br />
+                        <Typography variant="caption" color="textSecondary">
+                          {/* Subtotal: {formatCurrency(venda.itens.reduce((sum, item) => sum + item.subtotal, 0))} */}
+                        </Typography>
+                      </Box>
+                      <Box textAlign="right">
+                        <Chip
+                          label={venda.status === 'pago' ? 'PAGO' : venda.status.toUpperCase()}
+                          color={venda.status === 'pago' ? 'success' : 'warning'}
+                          size="small"
+                        />
+                      </Box>
+                    </Box>
+                  </Box>
+                </Card>
+              ))}
+            </Box>
+
+            <TablePagination
+              component="div"
+              count={vendas.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              labelRowsPerPage="Itens por página:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
+              }
+            />
+          </Paper>
+        </Box>
+      </Container>
+    </>
+  );
+};
+
+export default Reports;

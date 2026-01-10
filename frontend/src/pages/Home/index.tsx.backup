@@ -1,0 +1,754 @@
+import {
+  Box,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  Container,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  CircularProgress,
+  Alert,
+  alpha,
+  useTheme,
+  LinearProgress,
+  IconButton,
+  Tooltip
+} from '@mui/material';
+import {
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  AttachMoney as AttachMoneyIcon,
+  ShoppingCart as ShoppingCartIcon,
+  People as PeopleIcon,
+  Inventory as InventoryIcon,
+  Warning as WarningIcon,
+  CheckCircle as CheckCircleIcon,
+  AccessTime as AccessTimeIcon,
+  Refresh as RefreshIcon,
+  ArrowForward as ArrowForwardIcon
+} from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { Chart as ChartJS, ArcElement, Tooltip as ChartTooltip, Legend } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
+import { useDashboard } from '../../hooks/useDashboard';
+
+ChartJS.register(ArcElement, ChartTooltip, Legend);
+
+const Home = () => {
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const {
+    loading,
+    error,
+    stats,
+    vendasSemana,
+    vendasMes,
+    topProdutos,
+    getPieChartData,
+    calcularCrescimentoMensal,
+    carregarDados
+  } = useDashboard();
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  const formatPercentage = (value: number) => {
+    const sign = value >= 0 ? '+' : '';
+    return `${sign}${value.toFixed(1)}%`;
+  };
+
+  const crescimentoMensal = calcularCrescimentoMensal();
+  const pieChartData = getPieChartData();
+
+  // Tratamento de loading
+  if (loading) {
+    return (
+      <Container maxWidth="xl">
+        <Box padding={3} display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+          <Box textAlign="center">
+            <CircularProgress size={60} />
+            <Typography variant="h6" sx={{ mt: 2 }}>
+              Carregando dados do dashboard...
+            </Typography>
+          </Box>
+        </Box>
+      </Container>
+    );
+  }
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          padding: 15,
+          usePointStyle: true,
+          font: {
+            size: 11
+          }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: function (context: any) {
+            const value = formatCurrency(context.parsed);
+            return `${context.label}: ${value}`;
+          }
+        }
+      }
+    }
+  };
+
+  // Cards de KPI principais
+  const kpiCards = [
+    {
+      title: 'Vendas do Mês',
+      value: formatCurrency(vendasMes.total_vendas),
+      subtitle: `${vendasMes.quantidade_vendas} vendas`,
+      icon: <AttachMoneyIcon />,
+      color: '#2e7d32',
+      bgColor: alpha('#2e7d32', 0.1),
+      trend: crescimentoMensal,
+      trendLabel: 'vs mês anterior'
+    },
+    {
+      title: 'Vendas da Semana',
+      value: formatCurrency(vendasSemana.total_vendas),
+      subtitle: `${vendasSemana.quantidade_vendas} vendas`,
+      icon: <ShoppingCartIcon />,
+      color: '#1976d2',
+      bgColor: alpha('#1976d2', 0.1),
+      trend: null,
+      trendLabel: null
+    },
+    {
+      title: 'Ticket Médio',
+      value: formatCurrency(vendasSemana.ticket_medio),
+      subtitle: 'Últimos 7 dias',
+      icon: <PeopleIcon />,
+      color: '#9c27b0',
+      bgColor: alpha('#9c27b0', 0.1),
+      trend: null,
+      trendLabel: null
+    },
+    {
+      title: 'Total de Clientes',
+      value: stats.total_clientes.toString(),
+      subtitle: 'Cadastrados',
+      icon: <PeopleIcon />,
+      color: '#ed6c02',
+      bgColor: alpha('#ed6c02', 0.1),
+      trend: null,
+      trendLabel: null
+    }
+  ];
+
+  // Cards de alerta
+  const alertCards = [
+    {
+      title: 'Estoque Baixo',
+      value: stats.produtos_estoque_baixo,
+      icon: <WarningIcon />,
+      color: '#d32f2f',
+      bgColor: alpha('#d32f2f', 0.1),
+      action: () => navigate('/stock'),
+      actionLabel: 'Ver produtos'
+    },
+    {
+      title: 'Vendas Pendentes',
+      value: stats.vendas_pendentes,
+      icon: <AccessTimeIcon />,
+      color: '#f57c00',
+      bgColor: alpha('#f57c00', 0.1),
+      action: () => navigate('/sales-management'),
+      actionLabel: 'Gerenciar'
+    }
+  ];
+
+  return (
+    <Container maxWidth="xl" sx={{ pb: { xs: 4, md: 3 } }}>
+      <Box>
+        {/* Header */}
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          mb={{ xs: 2, md: 3 }}
+          flexDirection={{ xs: 'column', sm: 'row' }}
+          gap={2}
+        >
+          <Box>
+            <Typography
+              variant="h4"
+              fontWeight="bold"
+              sx={{ fontSize: { xs: '1.5rem', md: '2rem' } }}
+            >
+              Dashboard
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Visão geral do seu negócio
+            </Typography>
+          </Box>
+          <Tooltip title="Atualizar dados">
+            <IconButton
+              onClick={carregarDados}
+              sx={{
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
+              }}
+            >
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Exibir erros */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+          <Box sx={{ display: { xs: 'block', md: 'none' } }} marginBottom={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom fontWeight="bold" textAlign="center">
+                  Ações Rápidas
+                </Typography>
+                <Box display="flex" flexDirection="column" gap={2}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<AddShoppingCartIcon />}
+                    onClick={handleNewSale}
+                    fullWidth
+                    size="large"
+                    sx={{
+                      py: 2,
+                      fontSize: '1rem',
+                      fontWeight: 500
+                    }}
+                  >
+                    Nova Venda
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={<VisibilityIcon />}
+                    onClick={handleViewStock}
+                    fullWidth
+                    size="large"
+                    sx={{
+                      py: 2,
+                      fontSize: '1rem',
+                      fontWeight: 500
+                    }}
+                  >
+                    Consultar Estoque
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    startIcon={<BarChartIcon />}
+                    onClick={handleViewReports}
+                    fullWidth
+                    size="large"
+                    sx={{
+                      py: 2,
+                      fontSize: '1rem',
+                      fontWeight: 500
+                    }}
+                  >
+                    Relatórios
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="success"
+                    startIcon={<AddIcon />}
+                    onClick={handleAddProduct}
+                    fullWidth
+                    size="large"
+                    sx={{
+                      py: 2,
+                      fontSize: '1rem',
+                      fontWeight: 500
+                    }}
+                  >
+                    Adicionar Produto
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="info"
+                    startIcon={<PeopleIcon />}
+                    onClick={handleAddClient}
+                    fullWidth
+                    size="large"
+                    sx={{
+                      py: 2,
+                      fontSize: '1rem',
+                      fontWeight: 500
+                    }}
+                  >
+                    Cadastro Cliente
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<AssignmentIcon />}
+                    onClick={handleViewSales}
+                    fullWidth
+                    size="large"
+                    sx={{
+                      py: 2,
+                      fontSize: '1rem',
+                      fontWeight: 500
+                    }}
+                  >
+                    Gerenciar Vendas
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={<PeopleIcon />}
+                    onClick={handleViewClients}
+                    fullWidth
+                    size="large"
+                    sx={{
+                      py: 2,
+                      fontSize: '1rem',
+                      fontWeight: 500
+                    }}
+                  >
+                    Clientes
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Box>
+
+          <Box sx={{ display: { xs: 'block', md: 'none' } }} marginBottom={3}>
+            <Typography variant="h6" gutterBottom fontWeight="bold" textAlign="center" sx={{ mb: 2 }}>
+              Estatísticas
+            </Typography>
+            <Box display="flex" flexDirection="column" gap={2}>
+              <Card elevation={3} sx={{ borderRadius: 2 }}>
+                <CardContent sx={{ padding: 3 }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body1" color="textSecondary" fontWeight={500}>
+                        Vendas da Semana
+                      </Typography>
+                      <Typography variant="h4" fontWeight="bold" color="primary.main" sx={{ my: 1 }}>
+                        {vendasSemana.quantidade_vendas}
+                      </Typography>
+                      <Typography variant="body1" color="primary.main" fontWeight={500}>
+                        {formatCurrency(vendasSemana.total_vendas)}
+                      </Typography>
+                    </Box>
+                    <ShoppingCartIcon sx={{ fontSize: 48, color: 'primary.main', opacity: 0.7 }} />
+                  </Box>
+                </CardContent>
+              </Card>
+
+              <Card elevation={3} sx={{ borderRadius: 2 }}>
+                <CardContent sx={{ padding: 3 }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body1" color="textSecondary" fontWeight={500}>
+                        Receita do Mês
+                      </Typography>
+                      <Typography variant="h4" fontWeight="bold" color="success.main" sx={{ my: 1 }}>
+                        {formatCurrency(vendasMes.total_vendas)}
+                      </Typography>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        {crescimentoMensal >= 0 ? (
+                          <TrendingUpIcon sx={{ color: 'success.main', fontSize: 20 }} />
+                        ) : (
+                          <TrendingDownIcon sx={{ color: 'error.main', fontSize: 20 }} />
+                        )}
+                        <Typography
+                          variant="body2"
+                          color={crescimentoMensal >= 0 ? 'success.main' : 'error.main'}
+                          fontWeight={500}
+                        >
+                          {formatPercentage(crescimentoMensal)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <AttachMoneyIcon sx={{ fontSize: 48, color: 'success.main', opacity: 0.7 }} />
+                  </Box>
+                </CardContent>
+              </Card>
+
+              <Card elevation={3} sx={{ borderRadius: 2 }}>
+                <CardContent sx={{ padding: 3 }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body1" color="textSecondary" fontWeight={500}>
+                        Ticket Médio
+                      </Typography>
+                      <Typography variant="h4" fontWeight="bold" color="info.main" sx={{ my: 1 }}>
+                        {formatCurrency(vendasSemana.ticket_medio)}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" fontWeight={500}>
+                        Esta semana
+                      </Typography>
+                    </Box>
+                    <PeopleIcon sx={{ fontSize: 48, color: 'info.main', opacity: 0.7 }} />
+                  </Box>
+                </CardContent>
+              </Card>
+
+              <Card elevation={3} sx={{ borderRadius: 2 }}>
+                <CardContent sx={{ padding: 3 }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body1" color="textSecondary" fontWeight={500}>
+                        Total de Vendas
+                      </Typography>
+                      <Typography variant="h4" fontWeight="bold" color="warning.main" sx={{ my: 1 }}>
+                        {stats.vendas_mes.count}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" fontWeight={500}>
+                        Histórico completo
+                      </Typography>
+                    </Box>
+                    <InventoryIcon sx={{ fontSize: 48, color: 'warning.main', opacity: 0.7 }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
+          </Box>
+
+          <Grid container spacing={{ xs: 2, md: 3 }} marginBottom={{ xs: 3, md: 4 }} sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <Grid item xs={6} sm={6} md={3} {...({} as any)}>
+              <Card>
+                <CardContent sx={{ padding: { xs: 2, md: 3 } }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
+                        Vendas da Semana
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
+                        {vendasSemana.quantidade_vendas}
+                      </Typography>
+                      <Typography variant="body2" color="primary" sx={{ fontSize: { xs: '0.7rem', md: '0.875rem' } }}>
+                        {formatCurrency(vendasSemana.total_vendas)}
+                      </Typography>
+                    </Box>
+                    <ShoppingCartIcon sx={{ fontSize: { xs: 30, md: 40 }, color: 'primary.main', opacity: 0.7 }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={6} sm={6} md={3} {...({} as any)}>
+              <Card>
+                <CardContent sx={{ padding: { xs: 2, md: 3 } }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
+                        Receita do Mês
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold" sx={{ fontSize: { xs: '1rem', md: '1.5rem' } }}>
+                        {formatCurrency(vendasMes.total_vendas)}
+                      </Typography>
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        {crescimentoMensal >= 0 ? (
+                          <TrendingUpIcon sx={{ color: 'success.main', fontSize: { xs: 12, md: 16 } }} />
+                        ) : (
+                          <TrendingDownIcon sx={{ color: 'error.main', fontSize: { xs: 12, md: 16 } }} />
+                        )}
+                        <Typography
+                          variant="caption"
+                          color={crescimentoMensal >= 0 ? 'success.main' : 'error.main'}
+                          sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' } }}
+                        >
+                          {formatPercentage(crescimentoMensal)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <AttachMoneyIcon sx={{ fontSize: { xs: 30, md: 40 }, color: 'success.main', opacity: 0.7 }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={6} sm={6} md={3} {...({} as any)}>
+              <Card>
+                <CardContent sx={{ padding: { xs: 2, md: 3 } }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
+                        Ticket Médio
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold" sx={{ fontSize: { xs: '1rem', md: '1.5rem' } }}>
+                        {formatCurrency(vendasSemana.ticket_medio)}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.7rem', md: '0.875rem' } }}>
+                        Esta semana
+                      </Typography>
+                    </Box>
+                    <PeopleIcon sx={{ fontSize: { xs: 30, md: 40 }, color: 'info.main', opacity: 0.7 }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={6} sm={6} md={3} {...({} as any)}>
+              <Card>
+                <CardContent sx={{ padding: { xs: 2, md: 3 } }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
+                        Total Vendas
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
+                        {stats.vendas_mes.count}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.7rem', md: '0.875rem' } }}>
+                        Histórico completo
+                      </Typography>
+                    </Box>
+                    <InventoryIcon sx={{ fontSize: { xs: 30, md: 40 }, color: 'warning.main', opacity: 0.7 }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          <Box sx={{ display: { xs: 'block', md: 'none' } }} marginBottom={3}>
+            <Typography variant="h6" gutterBottom fontWeight="bold" textAlign="center" sx={{ mb: 2 }}>
+              Análises
+            </Typography>
+            <Box display="flex" flexDirection="column" gap={2}>
+              <Card elevation={3} sx={{ borderRadius: 2 }}>
+                <CardContent sx={{ padding: 3 }}>
+                  <Typography variant="h6" gutterBottom fontWeight="bold" textAlign="center">
+                    Vendas por Categoria
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" gutterBottom textAlign="center" sx={{ mb: 2 }}>
+                    Esta semana
+                  </Typography>
+                  <Box height={200} display="flex" justifyContent="center" alignItems="center">
+                    <Box width="100%" height="100%">
+                      <Pie data={pieChartData} options={chartOptions} />
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+
+              <Card elevation={3} sx={{ borderRadius: 2 }}>
+                <CardContent sx={{ padding: 3 }}>
+                  <Typography variant="h6" gutterBottom fontWeight="bold" textAlign="center">
+                    Top Produtos da Semana
+                  </Typography>
+                  <List dense>
+                    {topProdutos.map((product, index) => (
+                      <Box key={product.name}>
+                        <ListItem sx={{ padding: '12px 0' }}>
+                          <ListItemText
+                            primary={
+                              <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
+                                <Chip
+                                  label={`#${index + 1}`}
+                                  size="small"
+                                  color="primary"
+                                  variant="outlined"
+                                />
+                                <Typography variant="body1" fontWeight={500}>
+                                  {product.name}
+                                </Typography>
+                              </Box>
+                            }
+                            secondary={
+                              <Box display="flex" justifyContent="space-between" alignItems="center">
+                                <Typography variant="body2" color="textSecondary">
+                                  {product.quantidade_vendida} unidades
+                                </Typography>
+                                <Typography variant="body2" fontWeight="bold" color="primary.main">
+                                  {formatCurrency(product.receita_total)}
+                                </Typography>
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                        {index < topProdutos.length - 1 && <Divider />}
+                      </Box>
+                    ))}
+                  </List>
+                  {topProdutos.length === 0 && (
+                    <Typography variant="body2" color="textSecondary" textAlign="center" py={2}>
+                      Nenhuma venda esta semana
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
+            </Box>
+          </Box>
+
+          <Grid container spacing={{ xs: 2, md: 3 }} sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <Grid item xs={12} md={4} {...({} as any)}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom fontWeight="bold">
+                    Ações Rápidas
+                  </Typography>
+                  <Box display="flex" flexDirection="column" gap={2}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="large"
+                      startIcon={<AddShoppingCartIcon />}
+                      onClick={handleNewSale}
+                      fullWidth
+                    >
+                      Nova Venda
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      size="large"
+                      startIcon={<VisibilityIcon />}
+                      onClick={handleViewStock}
+                      fullWidth
+                    >
+                      Consultar Estoque
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      size="large"
+                      startIcon={<BarChartIcon />}
+                      onClick={handleViewReports}
+                      fullWidth
+                    >
+                      Relatórios
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="success"
+                      size="large"
+                      startIcon={<AddIcon />}
+                      onClick={handleAddProduct}
+                      fullWidth
+                    >
+                      Adicionar Produto
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="info"
+                      size="large"
+                      startIcon={<PeopleIcon />}
+                      onClick={handleAddClient}
+                      fullWidth
+                    >
+                      Cadastro Cliente
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="large"
+                      startIcon={<AssignmentIcon />}
+                      onClick={handleViewSales}
+                      fullWidth
+                    >
+                      Gerenciar Vendas
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      size="large"
+                      startIcon={<PeopleIcon />}
+                      onClick={handleViewClients}
+                      fullWidth
+                    >
+                      Clientes
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={6} {...({} as any)}>
+              <Card>
+                <CardContent sx={{ padding: { xs: 2, md: 3 } }}>
+                  <Typography variant="h6" gutterBottom fontWeight="bold" textAlign={{ xs: 'center', md: 'left' }}>
+                    Vendas por Categoria
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" gutterBottom textAlign={{ xs: 'center', md: 'left' }}>
+                    Esta semana
+                  </Typography>
+                  <Box height={{ xs: 200, md: 250 }} display="flex" justifyContent="center" alignItems="center">
+                    <Box width="100%" height="100%">
+                      <Pie data={pieChartData} options={chartOptions} />
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={6} {...({} as any)}>
+              <Card>
+                <CardContent sx={{ padding: { xs: 2, md: 3 } }}>
+                  <Typography variant="h6" gutterBottom fontWeight="bold" textAlign={{ xs: 'center', md: 'left' }}>
+                    Top Produtos da Semana
+                  </Typography>
+                  <List dense>
+                    {topProdutos.map((product, index) => (
+                      <Box key={product.name}>
+                        <ListItem sx={{ padding: { xs: '8px 0', md: '8px 16px' } }}>
+                          <ListItemText
+                            primary={
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <Chip
+                                  label={`#${index + 1}`}
+                                  size="small"
+                                  color="primary"
+                                  variant="outlined"
+                                />
+                                <Typography variant="body2" noWrap sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
+                                  {product.name}
+                                </Typography>
+                              </Box>
+                            }
+                            secondary={
+                              <Box display="flex" justifyContent="space-between" alignItems="center">
+                                <Typography variant="caption" sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' } }}>
+                                  {product.quantidade_vendida} unidades
+                                </Typography>
+                                <Typography variant="caption" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' } }}>
+                                  {formatCurrency(product.receita_total)}
+                                </Typography>
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                        {index < topProdutos.length - 1 && <Divider />}
+                      </Box>
+                    ))}
+                  </List>
+                  {topProdutos.length === 0 && (
+                    <Typography variant="body2" color="textSecondary" textAlign="center" py={2}>
+                      Nenhuma venda esta semana
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Box>
+      </Container>
+  );
+};
+
+export default Home;

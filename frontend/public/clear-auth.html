@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Limpar Autenticação</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        .success {
+            color: #4caf50;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 Gerenciar Autenticação</h2>
+        <p>Clique no botão abaixo para limpar os dados de autenticação e fazer login novamente.</p>
+
+        <button onclick="clearAuth()">Limpar e Ir para Login</button>
+
+        <div id="result"></div>
+
+        <script>
+            function clearAuth() {
+                // Limpar localStorage
+                localStorage.removeItem('@SOSBeauty:token');
+                localStorage.removeItem('@SOSBeauty:usuario');
+
+                // Mostrar mensagem
+                document.getElementById('result').innerHTML = '<p class="success">✅ Autenticação limpa com sucesso!</p>';
+
+                // Redirecionar para login
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1000);
+            }
+
+            // Mostrar info atual
+            window.onload = function() {
+                const token = localStorage.getItem('@SOSBeauty:token');
+                if (token) {
+                    document.getElementById('result').innerHTML = '<p>Token atual encontrado. Clique para limpar e fazer login novamente.</p>';
+                } else {
+                    document.getElementById('result').innerHTML = '<p>Nenhum token encontrado. Você já pode fazer login.</p>';
+                }
+            }
+        </script>
+    </div>
+</body>
+</html>

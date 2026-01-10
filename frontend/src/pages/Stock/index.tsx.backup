@@ -1,0 +1,467 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Container,
+  TablePagination,
+  TextField,
+  InputAdornment,
+  CircularProgress,
+  Alert,
+  Chip,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select
+} from '@mui/material';
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Inventory as InventoryIcon,
+  Search as SearchIcon,
+  Warning as WarningIcon
+} from '@mui/icons-material';
+import ProductModal from './ProductModal';
+import { formatCurrency } from '../../utils/formatCurrency';
+import { useProdutos } from '../../hooks/useProdutos';
+import type { Produto } from '../../types/api';
+
+const Stock = () => {
+  const {
+    produtos,
+    loading,
+    error,
+    refetch,
+    atualizarProduto,
+    atualizarProdutoComImagem,
+    deletarProduto,
+    consultarEstoque
+  } = useProdutos();
+
+  const [selectedProduct, setSelectedProduct] = useState<Produto | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoriaFiltro, setCategoriaFiltro] = useState('');
+  const [marcaFiltro, setMarcaFiltro] = useState('');
+  const [estoqueBaixo, setEstoqueBaixo] = useState(false);
+  const [promocional, setPromocional] = useState(false);
+  const [categorias, setCategorias] = useState<string[]>([]);
+  const [marcas, setMarcas] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (produtos.length > 0) {
+      const categoriasUnicas = Array.from(
+        new Set(produtos.map(p => p.category).filter(Boolean) as string[])
+      ).sort();
+      setCategorias(categoriasUnicas);
+
+      const marcasUnicas = Array.from(
+        new Set(produtos.map(p => p.brand).filter(Boolean) as string[])
+      ).sort();
+      setMarcas(marcasUnicas);
+    }
+  }, [produtos]);
+
+  const handleProductClick = (product: Produto) => {
+    setSelectedProduct(product);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedProduct(null);
+  };
+
+  const handleSaveProduct = async (updatedProduct: any) => {
+    try {
+      if (updatedProduct.id) {
+        // Se tem FormData (upload de imagem), usar função específica
+        if (updatedProduct.formData && updatedProduct.formData instanceof FormData) {
+          await atualizarProdutoComImagem(updatedProduct.id, updatedProduct.formData);
+        } else {
+          // Senão, usar função normal
+          await atualizarProduto(updatedProduct.id, updatedProduct);
+        }
+      }
+      handleCloseModal();
+    } catch (err) {
+      console.error('Erro ao salvar produto:', err);
+    }
+  };
+
+  const handleDeleteProduct = async (productId: number) => {
+    if (window.confirm('Tem certeza que deseja excluir este produto?')) {
+      try {
+        await deletarProduto(productId);
+      } catch (err) {
+        console.error('Erro ao excluir produto:', err);
+      }
+    }
+  };
+
+  const handleEditProduct = (product: Produto) => {
+    setSelectedProduct(product);
+    setModalOpen(true);
+  };
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const aplicarFiltros = async () => {
+    try {
+      await consultarEstoque({
+        categoria: categoriaFiltro || undefined,
+        estoque_baixo: estoqueBaixo || undefined,
+        promocional: promocional || undefined
+      });
+      setPage(0);
+    } catch (err) {
+      console.error('Erro ao aplicar filtros:', err);
+    }
+  };
+
+  useEffect(() => {
+    aplicarFiltros();
+  }, [categoriaFiltro, estoqueBaixo, promocional]);
+
+  const filteredProducts = produtos.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesMarca = !marcaFiltro || product.brand === marcaFiltro;
+
+    return matchesSearch && matchesMarca;
+  });
+
+  const paginatedProducts = filteredProducts.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+    setPage(0);
+  };
+
+  const limparFiltros = () => {
+    setSearchTerm('');
+    setCategoriaFiltro('');
+    setMarcaFiltro('');
+    setEstoqueBaixo(false);
+    setPromocional(false);
+    setPage(0);
+    refetch();
+  };
+
+
+  if (loading) {
+    return (
+      <Container maxWidth="lg">
+        <Box padding={3} display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+          <Box textAlign="center">
+            <CircularProgress size={60} />
+            <Typography variant="h6" sx={{ mt: 2 }}>
+              Carregando produtos...
+            </Typography>
+          </Box>
+        </Box>
+      </Container>
+    );
+  }
+
+  return (
+    <>
+      <Container maxWidth="lg">
+        <Box padding={3}>
+          <Box display="flex" alignItems="center" justifyContent="space-between" flexDirection={{xs : 'column', md: 'row'}} marginBottom={3}>
+            <Box display="flex" alignItems="center">
+              <InventoryIcon sx={{ marginRight: 1, fontSize: 32 }} />
+              <Typography variant="h4" component="h1" noWrap>
+                Consulta de Estoque
+              </Typography>
+            </Box>
+            <Box display="flex" gap={1} mt={{xs : 3, md : 0}}>
+              <Chip
+                label={`Total: ${produtos.length}`}
+                color="primary"
+                variant="outlined"
+              />
+              <Chip
+                label={`Estoque baixo: ${produtos.filter(p => p.stock <= 5).length}`}
+                color="warning"
+                variant="outlined"
+                icon={<WarningIcon />}
+              />
+            </Box>
+          </Box>
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
+
+          <Box marginBottom={3} sx={{ backgroundColor: 'background.paper', p: 2, borderRadius: 1, border: 1, borderColor: 'divider' }}>
+            <Typography variant="h6" gutterBottom>
+              Filtros
+            </Typography>
+            <Box display="flex" gap={2} flexWrap="wrap" alignItems="end">
+              <TextField
+                placeholder="Buscar produtos..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                variant="outlined"
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ minWidth: 200 }}
+              />
+
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Categoria</InputLabel>
+                <Select
+                  value={categoriaFiltro}
+                  onChange={(e) => setCategoriaFiltro(e.target.value)}
+                  label="Categoria"
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  {categorias.map(categoria => (
+                    <MenuItem key={categoria} value={categoria}>{categoria}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Marca</InputLabel>
+                <Select
+                  value={marcaFiltro}
+                  onChange={(e) => setMarcaFiltro(e.target.value)}
+                  label="Marca"
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  {marcas.map(marca => (
+                    <MenuItem key={marca} value={marca}>{marca}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Estoque</InputLabel>
+                <Select
+                  value={estoqueBaixo ? 'baixo' : ''}
+                  onChange={(e) => setEstoqueBaixo(e.target.value === 'baixo')}
+                  label="Estoque"
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  <MenuItem value="baixo">Apenas baixo (≤5)</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Promoção</InputLabel>
+                <Select
+                  value={promocional ? 'promocional' : ''}
+                  onChange={(e) => setPromocional(e.target.value === 'promocional')}
+                  label="Promoção"
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  <MenuItem value="promocional">Só promoções</MenuItem>
+                </Select>
+              </FormControl>
+
+              <Box>
+                <Typography variant="body2" color="textSecondary" component="button"
+                  onClick={limparFiltros}
+                  sx={{
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    border: 'none',
+                    background: 'none',
+                    '&:hover': { color: 'primary.main' }
+                  }}
+                >
+                  Limpar filtros
+                </Typography>
+              </Box>
+            </Box>
+
+            {(searchTerm || categoriaFiltro || marcaFiltro || estoqueBaixo || promocional) && (
+              <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                {filteredProducts.length} produto(s) encontrado(s)
+                {searchTerm && ` para "${searchTerm}"`}
+                {categoriaFiltro && ` na categoria "${categoriaFiltro}"`}
+                {marcaFiltro && ` da marca "${marcaFiltro}"`}
+                {estoqueBaixo && ` com estoque baixo`}
+                {promocional && ` em promoção`}
+              </Typography>
+            )}
+          </Box>
+
+          <Paper elevation={2}>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: 'primary.50' }}>
+                    <TableCell><strong>Produto</strong></TableCell>
+                    <TableCell align="center"><strong>Categoria</strong></TableCell>
+                    <TableCell align="center"><strong>Estoque</strong></TableCell>
+                    <TableCell align="center"><strong>Custo</strong></TableCell>
+                    <TableCell align="center"><strong>Preço</strong></TableCell>
+                    <TableCell align="center"><strong>Margem</strong></TableCell>
+                    <TableCell align="center"><strong>Ações</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedProducts.length > 0 ? (
+                    paginatedProducts.map((product) => (
+                      <TableRow
+                        key={product.id}
+                        sx={{
+                          cursor: 'pointer',
+                          '&:hover': {
+                            backgroundColor: 'action.hover'
+                          }
+                        }}
+                        onClick={() => handleProductClick(product)}
+                      >
+                        <TableCell>
+                          <Box>
+                            <Typography variant="body1" fontWeight="medium">
+                              {product.name}
+                            </Typography>
+                            {product.brand && (
+                              <Typography variant="body2" color="textSecondary">
+                                {product.brand}
+                              </Typography>
+                            )}
+                          </Box>
+                        </TableCell>
+                        <TableCell align="center">
+                          {product.category && (
+                            <Chip
+                              label={product.category}
+                              size="small"
+                              variant="outlined"
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell align="center">
+                          <Typography
+                            variant="body2"
+                            color={product.stock <= 10 ? 'error.main' : product.stock <= 20 ? 'warning.main' : 'inherit'}
+                            fontWeight={product.stock <= 10 ? 'bold' : 'normal'}
+                          >
+                            {product.stock}
+                            {product.stock <= 10 && (
+                              <WarningIcon sx={{ ml: 0.5, fontSize: 16 }} />
+                            )}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          {product.cost ? formatCurrency(product.cost) : '-'}
+                        </TableCell>
+                        <TableCell align="center">
+                          {formatCurrency(product.price)}
+                        </TableCell>
+                        <TableCell align="center">
+                          {product.cost ? (
+                            <Typography
+                              variant="body2"
+                              color={((product.price - product.cost) / product.price) * 100 > 50 ? 'success.main' : 'inherit'}
+                            >
+                              {(((product.price - product.cost) / product.price) * 100).toFixed(1)}%
+                            </Typography>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell align="center">
+                          <Box display="flex" justifyContent="center" gap={1}>
+                            <IconButton
+                              color="primary"
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditProduct(product);
+                              }}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton
+                              color="error"
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                product.id && handleDeleteProduct(product.id);
+                              }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                        <Typography variant="body1" color="textSecondary">
+                          {searchTerm || categoriaFiltro || marcaFiltro || estoqueBaixo || promocional
+                            ? 'Nenhum produto encontrado com os filtros aplicados'
+                            : 'Nenhum produto cadastrado'}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <TablePagination
+              component="div"
+              count={filteredProducts.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25]}
+              labelRowsPerPage="Itens p/ pag"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
+              }
+            />
+          </Paper>
+
+          <ProductModal
+            open={modalOpen}
+            product={selectedProduct}
+            produtos={produtos}
+            onClose={handleCloseModal}
+            onSave={handleSaveProduct}
+          />
+        </Box>
+      </Container>
+    </>
+  );
+};
+
+export default Stock;

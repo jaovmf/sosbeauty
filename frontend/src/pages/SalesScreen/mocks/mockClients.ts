@@ -1,0 +1,18 @@
+
+export const mockClients = [
+  { id: 1, name: 'Cleisse', email: 'cleisse123@hotmail.com', phone: '(49) 99935-5611', address: { street: 'Rua Lages, 270', neighborhood: 'Centro', city: 'Curitibanos', state: 'SC', zipCode: '89520-000' } },
+  { id: 2, name: 'Ana Costa', email: 'ana.costa@email.com', phone: '(11) 99999-2222', address: { street: 'Av. Beira Rio, 456', neighborhood: 'Glória', city: 'Joinville', state: 'SC', zipCode: '89216-500' } },
+  { id: 3, name: 'Fernanda Santos', email: 'fernanda.santos@email.com', phone: '(11) 99999-3333', address: { street: 'Rua XV de Novembro, 789', neighborhood: 'Bucarein', city: 'Joinville', state: 'SC', zipCode: '89202-070' } },
+  { id: 4, name: 'Juliana Oliveira', email: 'juliana.oliveira@email.com', phone: '(11) 99999-4444', address: { street: 'Rua Princesa Isabel, 321', neighborhood: 'América', city: 'Joinville', state: 'SC', zipCode: '89204-250' } },
+  { id: 5, name: 'Carla Rodrigues', email: 'carla.rodrigues@email.com', phone: '(11) 99999-5555', address: { street: 'Rua Santos Dumont, 654', neighborhood: 'Aventureiro', city: 'Joinville', state: 'SC', zipCode: '89226-720' } },
+  { id: 6, name: 'Patricia Lima', email: 'patricia.lima@email.com', phone: '(11) 99999-6666', address: { street: 'Rua do Comércio, 987', neighborhood: 'Boa Vista', city: 'Joinville', state: 'SC', zipCode: '89205-100' } },
+  { id: 7, name: 'Beatriz Almeida', email: 'beatriz.almeida@email.com', phone: '(11) 99999-7777', address: { street: 'Av. Getúlio Vargas, 147', neighborhood: 'Anita Garibaldi', city: 'Joinville', state: 'SC', zipCode: '89203-400' } },
+  { id: 8, name: 'Camila Ferreira', email: 'camila.ferreira@email.com', phone: '(11) 99999-8888', address: { street: 'Rua Blumenau, 258', neighborhood: 'Floresta', city: 'Joinville', state: 'SC', zipCode: '89211-300' } },
+  { id: 9, name: 'Larissa Martins', email: 'larissa.martins@email.com', phone: '(11) 99999-9999', address: { street: 'Rua Itajaí, 369', neighborhood: 'Saguaçu', city: 'Joinville', state: 'SC', zipCode: '89221-600' } },
+  { id: 10, name: 'Gabriela Pereira', email: 'gabriela.pereira@email.com', phone: '(11) 99999-0000', address: { street: 'Rua Curitiba, 741', neighborhood: 'Costa e Silva', city: 'Joinville', state: 'SC', zipCode: '89218-000' } },
+  { id: 11, name: 'Renata Souza', email: 'renata.souza@email.com', phone: '(11) 98888-1111', address: { street: 'Rua Visconde de Taunay, 852', neighborhood: 'Atiradores', city: 'Joinville', state: 'SC', zipCode: '89203-200' } },
+  { id: 12, name: 'Vanessa Barbosa', email: 'vanessa.barbosa@email.com', phone: '(11) 98888-2222', address: { street: 'Rua Dona Francisca, 963', neighborhood: 'Zona Industrial', city: 'Joinville', state: 'SC', zipCode: '89219-600' } },
+  { id: 13, name: 'Priscila Moreira', email: 'priscila.moreira@email.com', phone: '(11) 98888-3333', address: { street: 'Rua 9 de Março, 159', neighborhood: 'Centro', city: 'Joinville', state: 'SC', zipCode: '89201-400' } },
+  { id: 14, name: 'Luciana Dias', email: 'luciana.dias@email.com', phone: '(11) 98888-4444', address: { street: 'Av. Santos Dumont, 753', neighborhood: 'Santo Antônio', city: 'Joinville', state: 'SC', zipCode: '89218-700' } },
+  { id: 15, name: 'Amanda Ramos', email: 'amanda.ramos@email.com', phone: '(11) 98888-5555', address: { street: 'Rua Engenheiro Niemeyer, 486', neighborhood: 'Jardim Paraíso', city: 'Joinville', state: 'SC', zipCode: '89226-400' } }
+];
