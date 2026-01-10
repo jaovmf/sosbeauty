@@ -365,7 +365,7 @@ ${itemsList}
             </Typography>
 
             <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
+              <Grid {...({} as any)} size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   label="Nome completo"
@@ -374,7 +374,7 @@ ${itemsList}
                   required
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid {...({} as any)} size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   label="Email (opcional)"
@@ -383,7 +383,7 @@ ${itemsList}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid {...({} as any)} size={{ xs: 12 }}>
                 <TextField
                   fullWidth
                   label="Telefone"
@@ -393,7 +393,7 @@ ${itemsList}
                   required
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid {...({} as any)} size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   label="Rua"
@@ -403,7 +403,7 @@ ${itemsList}
                   required
                 />
               </Grid>
-              <Grid item xs={12} sm={3}>
+              <Grid {...({} as any)} size={{ xs: 12, sm: 3 }}>
                 <TextField
                   fullWidth
                   label="Número"
@@ -413,7 +413,7 @@ ${itemsList}
                   required
                 />
               </Grid>
-              <Grid item xs={12} sm={3}>
+              <Grid {...({} as any)} size={{ xs: 12, sm: 3 }}>
                 <TextField
                   fullWidth
                   label="CEP"
@@ -423,7 +423,7 @@ ${itemsList}
                   required
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid {...({} as any)} size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   label="Bairro"
@@ -432,7 +432,7 @@ ${itemsList}
                   required
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid {...({} as any)} size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   label="Cidade"
@@ -441,7 +441,7 @@ ${itemsList}
                   required
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid {...({} as any)} size={{ xs: 12 }}>
                 <TextField
                   fullWidth
                   label="Estado"
