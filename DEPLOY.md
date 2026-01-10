@@ -113,7 +113,7 @@ Role para baixo até **"Environment Variables"** e adicione:
 
 | Key | Value |
 |-----|-------|
-| `NODE_ENV` | `production` |
+| `` | `production` |
 | `PORT` | `3003` |
 | `MONGODB_URI` | Cole a connection string do MongoDB Atlas (com senha) |
 | `JWT_SECRET` | Gere uma chave aleatória (veja abaixo) |
@@ -130,11 +130,11 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 2. Aguarde o deploy (5-10 minutos na primeira vez)
 3. Quando terminar, você verá **"Live"** e uma URL como:
    ```
-   https://sosbeauty-api.onrender.com
+   https://sosbeauty.onrender.com
    ```
 4. **Teste** a API acessando:
    ```
-   https://sosbeauty-api.onrender.com/api/health
+   https://sosbeauty.onrender.com/api/health
    ```
    Deve retornar JSON com status OK
 
@@ -177,7 +177,7 @@ Preencha os campos:
    - **Name**: `VITE_API_URL`
    - **Value**: A URL do seu backend no Render + `/api`
      ```
-     https://sosbeauty-api.onrender.com/api
+     https://sosbeauty.onrender.com/api
      ```
    - **Environments**: Marque todas (Production, Preview, Development)
 3. Clique em **"Add"**
@@ -218,7 +218,7 @@ Agora que temos a URL do frontend, precisamos permitir no CORS:
 ## Passo 5: Testar Tudo
 
 ### 5.1 Verificar Backend
-Acesse: `https://sosbeauty-api.onrender.com/api/health`
+Acesse: `https://sosbeauty.onrender.com/api/health`
 
 Deve retornar:
 ```json
@@ -280,9 +280,9 @@ Use uma ferramenta como Postman ou cURL:
 Depois de concluir, anote suas URLs:
 
 - **Frontend (Loja/Admin)**: `https://sosbeauty-gestao-xxxxx.vercel.app`
-- **Backend API**: `https://sosbeauty-api.onrender.com/api`
+- **Backend API**: `https://sosbeauty.onrender.com/api`
 - **Catálogo Público**: `https://sosbeauty-gestao-xxxxx.vercel.app/catalog`
-- **Health Check**: `https://sosbeauty-api.onrender.com/api/health`
+- **Health Check**: `https://sosbeauty.onrender.com/api/health`
 
 ---
 
