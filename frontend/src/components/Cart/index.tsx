@@ -217,15 +217,22 @@ const Cart: React.FC = () => {
                       </Select>
                     </FormControl>
 
-                    {paymentMethod && ['credito', 'debito', 'dinheiro'].includes(paymentMethod.type) && (
+                    {paymentMethod && ['credito', 'debito'].includes(paymentMethod.type) && (
                       <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
-                        O pagamento será feito na hora da entrega
+                          O pagamento será feito na hora da entrega.
+                          OBS: Consultar taxas
                       </Alert>
                     )}
 
                     {paymentMethod?.type === 'pix' && (
                       <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
-                        Chave PIX será enviada após confirmação do pedido
+                        Chave PIX será enviada após confirmação do pedido.
+                      </Alert>
+                    )}
+
+                    {paymentMethod?.type === 'dinheiro' && (
+                      <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
+                        O pagamento será feito na hora da entrega.
                       </Alert>
                     )}
                   </Stack>

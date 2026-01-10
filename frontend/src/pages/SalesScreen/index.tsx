@@ -319,7 +319,7 @@ const SalesScreen = () => {
 
     let pixInfo = '';
     if (saleData.paymentMethod === 'pix') {
-      pixInfo = `\n\n*Dados para Pagamento PIX:*\nCNPJ: 46.393.792/0001-02\n\nPor favor, realize o pagamento e envie o comprovante.`;
+      pixInfo = `\n\n*Dados para Pagamento PIX:*\nCNPJ: 46393792000102\n\nPor favor, realize o pagamento e envie o comprovante.`;
     }
 
     let descontoInfo = '';
