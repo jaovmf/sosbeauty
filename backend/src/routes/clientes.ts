@@ -36,10 +36,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       message: 'Cliente cadastrado com sucesso'
     });
   } catch (error: any) {
-    if (error.code === 11000) {
-      res.status(400).json({ error: 'Email já cadastrado' });
-      return;
-    }
+    // Removido verificação de email duplicado (código 11000)
+    // Agora permite múltiplos clientes com mesmo email
     console.error('Erro ao cadastrar cliente:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
@@ -122,10 +120,7 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
 
     res.json({ message: 'Cliente atualizado com sucesso' });
   } catch (error: any) {
-    if (error.code === 11000) {
-      res.status(400).json({ error: 'Email já cadastrado para outro cliente' });
-      return;
-    }
+    // Removido verificação de email duplicado
     console.error('Erro ao atualizar cliente:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
