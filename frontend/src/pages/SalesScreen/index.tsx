@@ -75,6 +75,7 @@ const SalesScreen = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Produto | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [quantityInput, setQuantityInput] = useState<string>('1');
 
   // Estados de entrega e pagamento
   const [shippingOption, setShippingOption] = useState<'7' | '10' | 'free'>('7');
@@ -98,6 +99,12 @@ const SalesScreen = () => {
   useEffect(() => {
     listarClientes();
   }, [listarClientes]);
+
+  // Resetar quantidade quando produto mudar
+  useEffect(() => {
+    setQuantity(1);
+    setQuantityInput('1');
+  }, [selectedProduct]);
 
   const getProductPrice = (product: Produto) => {
     return product.promotional_price && product.promotional_price > 0 && product.promotional_price < product.price
@@ -584,9 +591,25 @@ Obrigado pela sua compra!`;
                       <TextField
                         type="number"
                         label="Quantidade"
-                        value={quantity}
-                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                        value={quantityInput}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setQuantityInput(val);
+
+                          // Atualizar quantidade numérica para cálculos
+                          const numVal = parseInt(val) || 0;
+                          setQuantity(numVal);
+                        }}
+                        onBlur={() => {
+                          // Quando sai do campo, garante valor mínimo de 1
+                          const numVal = parseInt(quantityInput) || 1;
+                          const finalVal = Math.max(1, Math.min(numVal, selectedProduct.stock));
+                          setQuantity(finalVal);
+                          setQuantityInput(finalVal.toString());
+                        }}
                         inputProps={{ min: 1, max: selectedProduct.stock }}
+                        error={!quantityInput || parseInt(quantityInput) === 0}
+                        helperText={(!quantityInput || parseInt(quantityInput) === 0) ? 'Mínimo: 1' : ''}
                         sx={{ width: 120 }}
                       />
                       <Button
