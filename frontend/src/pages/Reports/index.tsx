@@ -930,8 +930,7 @@ const Reports = () => {
                       <TableCell><strong>ID da Venda</strong></TableCell>
                       <TableCell><strong>Data</strong></TableCell>
                       <TableCell><strong>Cliente</strong></TableCell>
-                      <TableCell align="center"><strong>Itens</strong></TableCell>
-                      <TableCell align="center"><strong>Subtotal</strong></TableCell>
+                      <TableCell align="center"><strong>Frete</strong></TableCell>
                       <TableCell align="center"><strong>Status</strong></TableCell>
                       <TableCell align="center"><strong>Total</strong></TableCell>
                     </TableRow>
@@ -948,25 +947,20 @@ const Reports = () => {
                           {formatDate(venda.created_at)}
                         </TableCell>
                         <TableCell>
-                          <Box>
-                            <Typography variant="body2" fontWeight="medium">
-                              {venda.cliente_nome}
-                            </Typography>
-                            <Typography variant="caption" color="textSecondary">
-                              Status: {venda.status}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Typography variant="body2">
-                            {/* {venda.itens.length} produto(s) */}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {/* {venda.itens.reduce((sum, item) => sum + item.quantidade, 0)} unidade(s) */}
+                          <Typography variant="body2" fontWeight="medium">
+                            {venda.cliente_nome}
                           </Typography>
                         </TableCell>
                         <TableCell align="center">
-                          {/* {formatCurrency(venda.itens.reduce((sum, item) => sum + item.subtotal, 0))} */}
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: venda.shipping_value > 0 ? 'text.primary' : 'success.main',
+                              fontWeight: venda.shipping_value > 0 ? 'normal' : 'bold'
+                            }}
+                          >
+                            {venda.shipping_value > 0 ? formatCurrency(venda.shipping_value) : 'Grátis'}
+                          </Typography>
                         </TableCell>
                         <TableCell align="center">
                           <Chip
@@ -1009,19 +1003,15 @@ const Reports = () => {
                       <Typography variant="body2" fontWeight="medium">
                         {venda.cliente_nome}
                       </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        Status: {venda.status}
-                      </Typography>
                     </Box>
 
                     <Box display="flex" justifyContent="space-between" alignItems="center">
                       <Box>
                         <Typography variant="caption" color="textSecondary">
-                          {/* {venda.itens.length} produto(s) • {venda.itens.reduce((sum, item) => sum + item.quantidade, 0)} unidade(s) */}
-                        </Typography>
-                        <br />
-                        <Typography variant="caption" color="textSecondary">
-                          {/* Subtotal: {formatCurrency(venda.itens.reduce((sum, item) => sum + item.subtotal, 0))} */}
+                          Frete:{' '}
+                          <span style={{ color: venda.shipping_value > 0 ? 'inherit' : '#2e7d32', fontWeight: venda.shipping_value > 0 ? 'normal' : 'bold' }}>
+                            {venda.shipping_value > 0 ? formatCurrency(venda.shipping_value) : 'Grátis'}
+                          </span>
                         </Typography>
                       </Box>
                       <Box textAlign="right">
