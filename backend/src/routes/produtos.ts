@@ -17,7 +17,28 @@ const extractPublicId = (url: string): string | null => {
   }
 };
 
-// Todas as rotas de produtos requerem autenticação
+// ============================================
+// ROTAS PÚBLICAS (sem autenticação)
+// ============================================
+
+// Listar produtos para o catálogo público
+router.get('/catalogo', async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Retorna apenas produtos ativos com estoque > 0
+    const produtos = await Produto.find({ ativo: true, stock: { $gt: 0 } })
+      .select('name brand description category price promotional_price stock image')
+      .sort({ name: 1 });
+
+    res.json(produtos);
+  } catch (error) {
+    console.error('Erro ao buscar produtos do catálogo:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// ============================================
+// ROTAS PROTEGIDAS (requerem autenticação)
+// ============================================
 router.use(authenticate);
 
 // Criar novo produto

@@ -2,9 +2,15 @@ import api from '../lib/api';
 import type { Produto, ConsultaEstoque } from '../types/api';
 
 export const produtosService = {
-  // Listar todos os produtos
+  // Listar todos os produtos (requer autenticação)
   async listar(): Promise<Produto[]> {
     const response = await api.get<Produto[]>('/produtos');
+    return response.data;
+  },
+
+  // Listar produtos do catálogo público (sem autenticação)
+  async listarCatalogo(): Promise<Produto[]> {
+    const response = await api.get<Produto[]>('/produtos/catalogo');
     return response.data;
   },
 

@@ -29,10 +29,10 @@ import ProductCard from '../../components/ProductCard';
 import CatalogHeader from '../../components/Layout/CatalogHeader';
 import Cart from '../../components/Cart';
 import CartButton from '../../components/Cart/CartButton';
-import { useProdutos } from '../../hooks/useProdutos';
+import { useCatalogo } from '../../hooks/useProdutos';
 
 const Catalog = () => {
-  const { produtos, loading, error } = useProdutos();
+  const { produtos, loading, error } = useCatalogo();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState('');
   const [promocionalFiltro, setPromocionalFiltro] = useState(false);

@@ -144,4 +144,31 @@ export const useProdutosPorCategoria = (categoria: string) => {
   return useProdutos({ categoria });
 };
 
+// Hook específico para catálogo público (sem autenticação)
+export const useCatalogo = () => {
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCatalogo = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await produtosService.listarCatalogo();
+      setProdutos(result);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Erro ao carregar catálogo');
+      console.error('Erro ao buscar catálogo:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCatalogo();
+  }, [fetchCatalogo]);
+
+  return { produtos, loading, error, refetch: fetchCatalogo };
+};
+
 export default useProdutos;
