@@ -59,6 +59,11 @@ import api from '../../lib/api';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs, { Dayjs } from 'dayjs';
+import 'dayjs/locale/pt-br';
 
 // Registrar componentes do Chart.js
 ChartJS.register(
@@ -104,8 +109,8 @@ const Reports = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState<Dayjs | null>(null);
+  const [endDate, setEndDate] = useState<Dayjs | null>(null);
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Produto[]>([]);
 
@@ -178,8 +183,8 @@ const Reports = () => {
   const carregarEstatisticas = async () => {
     try {
       const filtros: any = {};
-      if (startDate) filtros.data_inicio = startDate;
-      if (endDate) filtros.data_fim = endDate;
+      if (startDate) filtros.data_inicio = startDate.format('YYYY-MM-DD');
+      if (endDate) filtros.data_fim = endDate.format('YYYY-MM-DD');
 
       const relatorio = await relatoriosService.obterRelatorioVendas(filtros);
       setTotalVendas(relatorio.quantidade_vendas);
@@ -195,8 +200,8 @@ const Reports = () => {
     try {
       const filtros = {};
 
-      if (startDate) filtros.data_inicio = startDate;
-      if (endDate) filtros.data_fim = endDate;
+      if (startDate) filtros.data_inicio = startDate.format('YYYY-MM-DD');
+      if (endDate) filtros.data_fim = endDate.format('YYYY-MM-DD');
       if (selectedClient) filtros.cliente_id = selectedClient.id.toString();
 
       const vendasData = await relatoriosService.obterVendas(filtros);
@@ -336,8 +341,8 @@ const Reports = () => {
   };
 
   const clearFilters = () => {
-    setStartDate('');
-    setEndDate('');
+    setStartDate(null);
+    setEndDate(null);
     setSelectedClient(null);
     setSelectedProducts([]);
     setPage(0);
@@ -383,7 +388,7 @@ const Reports = () => {
 
     if (startDate || endDate) {
       doc.setFontSize(12);
-      const period = `Período: ${startDate ? formatDate(startDate) : 'Início'} até ${endDate ? formatDate(endDate) : 'Hoje'}`;
+      const period = `Período: ${startDate ? startDate.format('DD/MM/YYYY') : 'Início'} até ${endDate ? endDate.format('DD/MM/YYYY') : 'Hoje'}`;
       doc.text(period, 20, 35);
     }
 
@@ -740,35 +745,42 @@ const Reports = () => {
             >
               Filtros
             </Typography>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  label="Data Inicial"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setPage(0);
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                  size="small"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  label="Data Final"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setPage(0);
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                  size="small"
-                />
-              </Grid>
+            <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} sm={6} md={3}>
+                  <DatePicker
+                    label="Data Inicial"
+                    value={startDate}
+                    onChange={(newValue) => {
+                      setStartDate(newValue);
+                      setPage(0);
+                    }}
+                    format="DD/MM/YYYY"
+                    slotProps={{
+                      textField: {
+                        size: 'small',
+                        fullWidth: true
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <DatePicker
+                    label="Data Final"
+                    value={endDate}
+                    onChange={(newValue) => {
+                      setEndDate(newValue);
+                      setPage(0);
+                    }}
+                    format="DD/MM/YYYY"
+                    slotProps={{
+                      textField: {
+                        size: 'small',
+                        fullWidth: true
+                      }
+                    }}
+                  />
+                </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Autocomplete
                   options={clientes}
@@ -825,7 +837,8 @@ const Reports = () => {
                   Limpar Filtros
                 </Button>
               </Grid>
-            </Grid>
+              </Grid>
+            </LocalizationProvider>
           </Paper>
 
           {/* Gráficos */}
