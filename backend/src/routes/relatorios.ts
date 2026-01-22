@@ -49,11 +49,13 @@ router.get('/vendas', async (req: Request, res: Response): Promise<void> => {
 
     // Calcular totais
     let totalVendas = 0;
+    let totalFrete = 0;
     let quantidadeVendas = vendas.length;
     const produtosMap = new Map<string, { name: string, quantidade: number, receita: number }>();
 
     vendas.forEach(venda => {
       totalVendas += venda.total;
+      totalFrete += venda.shipping_value || 0;
 
       venda.itens.forEach(item => {
         const produtoId = item.produto_id.toString();
@@ -87,6 +89,7 @@ router.get('/vendas', async (req: Request, res: Response): Promise<void> => {
     res.json({
       periodo: periodo || `${data_inicio} a ${data_fim}`,
       total_vendas: totalVendas,
+      total_frete: Math.round(totalFrete * 100) / 100,
       quantidade_vendas: quantidadeVendas,
       ticket_medio: Math.round(ticketMedio * 100) / 100,
       produtos_mais_vendidos: produtosMaisVendidos
@@ -361,7 +364,8 @@ router.get('/dashboard', async (req: Request, res: Response): Promise<void> => {
 
     const vendasHojeStats = {
       count: vendasHoje.length,
-      total: vendasHoje.reduce((sum, v) => sum + v.total, 0)
+      total: vendasHoje.reduce((sum, v) => sum + v.total, 0),
+      frete: vendasHoje.reduce((sum, v) => sum + (v.shipping_value || 0), 0)
     };
 
     // Vendas do mês
@@ -372,7 +376,8 @@ router.get('/dashboard', async (req: Request, res: Response): Promise<void> => {
 
     const vendasMesStats = {
       count: vendasMes.length,
-      total: vendasMes.reduce((sum, v) => sum + v.total, 0)
+      total: vendasMes.reduce((sum, v) => sum + v.total, 0),
+      frete: vendasMes.reduce((sum, v) => sum + (v.shipping_value || 0), 0)
     };
 
     // Produtos com estoque baixo

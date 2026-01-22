@@ -37,7 +37,8 @@ import {
   Inventory as InventoryIcon,
   BarChart as BarChartIcon,
   ShowChart as ShowChartIcon,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  LocalShipping as LocalShippingIcon
 } from '@mui/icons-material';
 import {
   Chart as ChartJS,
@@ -111,6 +112,7 @@ const Reports = () => {
   const [totalVendas, setTotalVendas] = useState(0);
   const [faturamentoTotal, setFaturamentoTotal] = useState(0);
   const [ticketMedio, setTicketMedio] = useState(0);
+  const [totalFrete, setTotalFrete] = useState(0);
 
   const [chartType, setChartType] = useState<ChartType>('line');
 
@@ -183,6 +185,7 @@ const Reports = () => {
       setTotalVendas(relatorio.quantidade_vendas);
       setFaturamentoTotal(relatorio.total_vendas);
       setTicketMedio(relatorio.ticket_medio);
+      setTotalFrete(relatorio.total_frete || 0);
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
     }
@@ -680,7 +683,7 @@ const Reports = () => {
 
           {/* KPI Cards */}
           <Grid container spacing={2} marginBottom={3}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <KPICard
                 title="Total de Vendas"
                 value={totalVendas}
@@ -689,7 +692,7 @@ const Reports = () => {
                 trend={trends.sales}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <KPICard
                 title="Faturamento Total"
                 value={formatCurrency(faturamentoTotal)}
@@ -698,7 +701,7 @@ const Reports = () => {
                 trend={trends.revenue}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <KPICard
                 title="Ticket Médio"
                 value={formatCurrency(ticketMedio)}
@@ -707,7 +710,15 @@ const Reports = () => {
                 trend={trends.ticket}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={2.4}>
+              <KPICard
+                title="Total em Frete"
+                value={formatCurrency(totalFrete)}
+                icon={<LocalShippingIcon sx={{ color: theme.palette.warning.main }} />}
+                color={theme.palette.warning.main}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={2.4}>
               <KPICard
                 title="Total de Clientes"
                 value={clientes.length}
