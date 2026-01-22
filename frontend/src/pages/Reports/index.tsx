@@ -791,10 +791,15 @@ const Reports = () => {
                     setPage(0);
                   }}
                   renderInput={(params) => (
-                    <TextField {...params} label="Cliente" size="small" />
+                    <TextField
+                      {...params}
+                      label="Cliente"
+                      size="small"
+                      sx={{ minWidth: 200 }}
+                    />
                   )}
                   isOptionEqualToValue={(option, value) => option.id === value.id}
-                  size="small"
+                  sx={{ minWidth: 200 }}
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
@@ -808,7 +813,12 @@ const Reports = () => {
                     setPage(0);
                   }}
                   renderInput={(params) => (
-                    <TextField {...params} label="Produtos" size="small" />
+                    <TextField
+                      {...params}
+                      label="Produtos"
+                      size="small"
+                      sx={{ minWidth: 200 }}
+                    />
                   )}
                   renderTags={(value, getTagProps) =>
                     value.map((option, index) => (
@@ -822,7 +832,7 @@ const Reports = () => {
                     ))
                   }
                   isOptionEqualToValue={(option, value) => option.id === value.id}
-                  size="small"
+                  sx={{ minWidth: 200 }}
                 />
               </Grid>
               <Grid item xs={12}>
