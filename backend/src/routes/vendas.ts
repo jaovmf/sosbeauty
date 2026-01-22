@@ -113,7 +113,7 @@ router.use(authenticate);
 // Endpoint para vendas normais (do SalesScreen)
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { cliente_id, observacoes, itens, desconto_tipo, desconto_valor, valor_pago, payment_method } = req.body;
+    const { cliente_id, observacoes, itens, desconto_tipo, desconto_valor, valor_pago, payment_method, valor_frete } = req.body;
 
     if (!itens || itens.length === 0) {
       res.status(400).json({ error: 'Pelo menos um item é obrigatório' });
@@ -205,6 +205,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       valor_pago: valor_pago || undefined,
       troco,
       payment_method,
+      shipping_value: valor_frete ? parseFloat(valor_frete) : 0,
       observacoes,
       status: 'pago',
       itens: itensProcessados
