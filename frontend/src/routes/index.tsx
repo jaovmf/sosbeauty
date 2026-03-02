@@ -16,6 +16,7 @@ import ClientsList from '../pages/ClientsList';
 import UsuariosManagement from '../pages/UsuariosManagement';
 import FornecedoresList from '../pages/FornecedoresList';
 import EntradasMercadoria from '../pages/EntradasMercadoria';
+import CRM from '../pages/CRM';
 
 const AppRoutes = () => {
   return (
@@ -43,6 +44,7 @@ const AppRoutes = () => {
                     <Route path="/clients-list" element={<ClientsList />} />
                     <Route path="/fornecedores" element={<FornecedoresList />} />
                     <Route path="/entradas" element={<EntradasMercadoria />} />
+                    <Route path="/crm" element={<CRM />} />
                     <Route path="/usuarios" element={<UsuariosManagement />} />
                   </Routes>
                 </AppLayout>

@@ -177,7 +177,13 @@ const SalesManagement = () => {
       const numero = tipo === 'pre_venda' ? `ORC-${venda.id}` : `VDA-${venda.id}`;
       const statusTexto = tipo === 'pre_venda' ? 'Aguardando confirmação' : 'Venda finalizada';
 
-      const message = `*${titulo} - SOS Beauty*\n\n*Número:* ${numero}\n*Data:* ${new Date(venda.created_at).toLocaleDateString('pt-BR')} às ${new Date(venda.created_at).toLocaleTimeString('pt-BR')}\n\n*Cliente:* ${cliente.name}\n*Telefone:* ${cliente.phone || 'Não informado'}\n\n*Endereço de Entrega:*\n${cliente.street || 'Não informado'}\n${cliente.neighborhood || ''}\n${cliente.city || 'Não informado'} - ${cliente.state || ''}\nCEP: ${cliente.zipCode || 'Não informado'}\n\n*Produtos:*\n${itemsList}\n\n*Resumo:*\nFrete: ${vendaCompleta.shipping_value ? formatCurrency(vendaCompleta.shipping_value) : 'Grátis'}\nForma de pagamento: ${vendaCompleta.payment_method || 'Não informado'}\n*Total: ${formatCurrency(vendaCompleta.total)}*\n\n*Status:* ${statusTexto}`;
+      const paymentMethod = String(vendaCompleta.payment_method || '').toLowerCase();
+      const isPix = paymentMethod.includes('pix');
+      const pixInfo = isPix
+        ? `\n\n*Dados para Pagamento PIX:*\nCNPJ: 46393792000102\n\nPor favor, realize o pagamento e envie o comprovante.`
+        : '';
+
+      const message = `*${titulo} - SOS Beauty*\n\n*Número:* ${numero}\n*Data:* ${new Date(venda.created_at).toLocaleDateString('pt-BR')} às ${new Date(venda.created_at).toLocaleTimeString('pt-BR')}\n\n*Cliente:* ${cliente.name}\n*Telefone:* ${cliente.phone || 'Não informado'}\n\n*Endereço de Entrega:*\n${cliente.street || 'Não informado'}\n${cliente.neighborhood || ''}\n${cliente.city || 'Não informado'} - ${cliente.state || ''}\nCEP: ${cliente.zipCode || 'Não informado'}\n\n*Produtos:*\n${itemsList}\n\n*Resumo:*\nFrete: ${vendaCompleta.shipping_value ? formatCurrency(vendaCompleta.shipping_value) : 'Grátis'}\nForma de pagamento: ${vendaCompleta.payment_method || 'Não informado'}\n*Total: ${formatCurrency(vendaCompleta.total)}*${pixInfo}\n\n*Status:* ${statusTexto}`;
 
       window.open(`https://wa.me/55${clientPhone}?text=${encodeURIComponent(message)}`, '_blank');
       setWhatsappOpen(false);

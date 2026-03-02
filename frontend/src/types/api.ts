@@ -28,6 +28,33 @@ export interface Cliente {
   updated_at?: string;
 }
 
+export interface ClienteCRM {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  total_compras: number;
+  valor_total: number;
+  ticket_medio: number;
+  ultima_compra?: string | null;
+  dias_sem_comprar?: number | null;
+  status_relacionamento: 'ativo' | 'inativo' | 'sem_compras';
+  score: number;
+}
+
+export interface ClienteCRMResponse {
+  dias_inativo: number;
+  resumo: {
+    total_clientes: number;
+    ativos: number;
+    inativos: number;
+    sem_compras: number;
+    faturamento_total: number;
+  };
+  clientes: ClienteCRM[];
+}
+
 export interface VendaItem {
   id?: number;
   venda_id?: number;

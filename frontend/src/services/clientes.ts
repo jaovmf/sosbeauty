@@ -1,5 +1,5 @@
 import api from '../lib/api';
-import type { Cliente } from '../types/api';
+import type { Cliente, ClienteCRMResponse } from '../types/api';
 
 export const clientesService = {
   async listar(search?: string): Promise<Cliente[]> {
@@ -34,6 +34,17 @@ export const clientesService = {
   
   async buscar(termo: string): Promise<Cliente[]> {
     return this.listar(termo);
+  },
+
+  async obterCRM(search?: string, diasInativo: number = 60): Promise<ClienteCRMResponse> {
+    const params = new URLSearchParams();
+    if (search) {
+      params.append('search', search);
+    }
+    params.append('dias_inativo', String(diasInativo));
+
+    const response = await api.get<ClienteCRMResponse>(`/clientes/crm/resumo?${params.toString()}`);
+    return response.data;
   },
 };
 

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { clientesService } from '../services/clientes';
-import type { Cliente } from '../types/api';
+import type { Cliente, ClienteCRMResponse } from '../types/api';
 
 export const useClientes = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -102,6 +102,21 @@ export const useClientes = () => {
     }
   }, []);
 
+  const obterCRM = useCallback(async (search?: string, diasInativo: number = 60): Promise<ClienteCRMResponse | null> => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await clientesService.obterCRM(search, diasInativo);
+      return result;
+    } catch (err: any) {
+      console.error('Erro ao carregar CRM de clientes:', err);
+      setError(err.response?.data?.error || 'Erro ao carregar CRM de clientes');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     clientes,
     loading,
@@ -112,6 +127,7 @@ export const useClientes = () => {
     atualizarCliente,
     deletarCliente,
     buscarClientes,
+    obterCRM,
     clearError: () => setError(''),
   };
 };

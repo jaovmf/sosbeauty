@@ -61,6 +61,7 @@ const secondaryMenuItems: MenuItemType[] = [
   { text: 'Adicionar Produto', icon: <AddBoxIcon />, path: '/products' },
   { text: 'Cadastrar Cliente', icon: <PersonAddIcon />, path: '/clients' },
   { text: 'Lista de Clientes', icon: <PeopleIcon />, path: '/clients-list' },
+  { text: 'CRM Simples', icon: <ManageAccountsIcon />, path: '/crm' },
   { text: 'Fornecedores', icon: <BusinessIcon />, path: '/fornecedores' },
   { text: 'Entrada de Mercadorias', icon: <LocalShippingIcon />, path: '/entradas' },
 ];

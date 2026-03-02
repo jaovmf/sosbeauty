@@ -17,6 +17,7 @@ import {
   PersonAdd as PersonAddIcon,
   People as PeopleIcon,
   Storefront as StorefrontIcon,
+  ManageAccounts as ManageAccountsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -31,6 +32,7 @@ const mainActions = [
 const speedDialActions = [
   { icon: <AssessmentIcon />, name: 'Relatórios', path: '/reports' },
   { icon: <PeopleIcon />, name: 'Clientes', path: '/clients-list' },
+  { icon: <ManageAccountsIcon />, name: 'CRM', path: '/crm' },
   { icon: <PersonAddIcon />, name: 'Cadastrar Cliente', path: '/clients' },
   { icon: <AddBoxIcon />, name: 'Adicionar Produto', path: '/products' },
 ];
