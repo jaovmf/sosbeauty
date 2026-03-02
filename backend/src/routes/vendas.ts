@@ -7,6 +7,64 @@ import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
+const processarItensEVenda = async (payload: {
+  itens: any[];
+  desconto_tipo?: 'percentual' | 'valor';
+  desconto_valor?: number;
+}) => {
+  const { itens, desconto_tipo, desconto_valor } = payload;
+
+  const itensProcessados = [];
+  let subtotal = 0;
+
+  for (const item of itens) {
+    const produto = await Produto.findOne({ _id: item.produto_id, ativo: true });
+
+    if (!produto) {
+      throw new Error(`Produto ${item.produto_id} não encontrado`);
+    }
+
+    if (produto.stock < item.quantidade) {
+      throw new Error(`Estoque insuficiente para produto ${produto.name}`);
+    }
+
+    const finalPrice = produto.promotional_price && produto.promotional_price > 0 && produto.promotional_price < produto.price
+      ? produto.promotional_price
+      : produto.price;
+
+    const itemSubtotal = finalPrice * item.quantidade;
+    subtotal += itemSubtotal;
+
+    itensProcessados.push({
+      produto_id: produto._id,
+      produto_nome: produto.name,
+      quantidade: item.quantidade,
+      preco_unitario: finalPrice,
+      subtotal: itemSubtotal
+    });
+  }
+
+  let valorDesconto = 0;
+  if (desconto_tipo && desconto_valor && desconto_valor > 0) {
+    if (desconto_tipo === 'percentual') {
+      valorDesconto = (subtotal * desconto_valor) / 100;
+    } else if (desconto_tipo === 'valor') {
+      valorDesconto = desconto_valor;
+    }
+  }
+
+  if (valorDesconto > subtotal) {
+    throw new Error('O desconto não pode ser maior que o subtotal');
+  }
+
+  return {
+    itensProcessados,
+    subtotal,
+    valorDesconto,
+    total: subtotal - valorDesconto
+  };
+};
+
 // Endpoint para vendas do catálogo (público - não requer autenticação)
 router.post('/catalog', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -109,6 +167,116 @@ router.post('/catalog', async (req: Request, res: Response): Promise<void> => {
 
 // Todas as rotas abaixo requerem autenticação
 router.use(authenticate);
+
+// Criar pré-venda (orçamento interno)
+router.post('/pre-venda', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { cliente_id, observacoes, itens, desconto_tipo, desconto_valor, payment_method, valor_frete } = req.body;
+
+    if (!itens || itens.length === 0) {
+      res.status(400).json({ error: 'Pelo menos um item é obrigatório' });
+      return;
+    }
+
+    if (!cliente_id) {
+      res.status(400).json({ error: 'Cliente é obrigatório' });
+      return;
+    }
+
+    const { itensProcessados, subtotal, valorDesconto, total } = await processarItensEVenda({
+      itens,
+      desconto_tipo,
+      desconto_valor
+    });
+
+    const cliente = await Cliente.findById(cliente_id);
+    const cliente_nome = cliente ? cliente.name : undefined;
+
+    const venda = new Venda({
+      cliente_id,
+      cliente_nome,
+      subtotal,
+      desconto_tipo: desconto_tipo || undefined,
+      desconto_valor: valorDesconto,
+      total,
+      observacoes,
+      status: 'pendente',
+      payment_method,
+      shipping_value: valor_frete ? parseFloat(valor_frete) : 0,
+      itens: itensProcessados
+    });
+
+    await venda.save();
+
+    res.status(201).json({
+      id: venda._id,
+      subtotal,
+      desconto: valorDesconto,
+      total,
+      status: 'pendente',
+      message: 'Pré-venda criada com sucesso'
+    });
+  } catch (error: any) {
+    console.error('Erro ao criar pré-venda:', error);
+    res.status(400).json({ error: error.message || 'Erro ao criar pré-venda' });
+  }
+});
+
+// Atualizar pré-venda pendente (itens, desconto, frete e pagamento)
+router.put('/:id/pre-venda', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { cliente_id, observacoes, itens, desconto_tipo, desconto_valor, payment_method, valor_frete } = req.body;
+
+    const venda = await Venda.findOne({ _id: id, status: 'pendente' });
+    if (!venda) {
+      res.status(404).json({ error: 'Pré-venda não encontrada ou já finalizada' });
+      return;
+    }
+
+    if (!itens || itens.length === 0) {
+      res.status(400).json({ error: 'Pelo menos um item é obrigatório' });
+      return;
+    }
+
+    const { itensProcessados, subtotal, valorDesconto, total } = await processarItensEVenda({
+      itens,
+      desconto_tipo,
+      desconto_valor
+    });
+
+    let cliente_nome = venda.cliente_nome;
+    if (cliente_id) {
+      const cliente = await Cliente.findById(cliente_id);
+      cliente_nome = cliente ? cliente.name : venda.cliente_nome;
+      venda.cliente_id = cliente_id;
+    }
+
+    venda.cliente_nome = cliente_nome;
+    venda.itens = itensProcessados;
+    venda.subtotal = subtotal;
+    venda.desconto_tipo = desconto_tipo || undefined;
+    venda.desconto_valor = valorDesconto;
+    venda.total = total;
+    venda.observacoes = observacoes;
+    venda.payment_method = payment_method;
+    venda.shipping_value = valor_frete ? parseFloat(valor_frete) : 0;
+
+    await venda.save();
+
+    res.json({
+      id: venda._id,
+      subtotal,
+      desconto: valorDesconto,
+      total,
+      status: venda.status,
+      message: 'Pré-venda atualizada com sucesso'
+    });
+  } catch (error: any) {
+    console.error('Erro ao atualizar pré-venda:', error);
+    res.status(400).json({ error: error.message || 'Erro ao atualizar pré-venda' });
+  }
+});
 
 // Endpoint para vendas normais (do SalesScreen)
 router.post('/', async (req: Request, res: Response): Promise<void> => {

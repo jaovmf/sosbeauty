@@ -35,6 +35,18 @@ export const vendasService = {
     return response.data;
   },
 
+  // Criar nova pré-venda (orçamento)
+  async criarPreVenda(venda: NovaVendaRequest): Promise<{ id: number; total: number; message: string }> {
+    const response = await api.post('/vendas/pre-venda', venda);
+    return response.data;
+  },
+
+  // Atualizar pré-venda pendente
+  async atualizarPreVenda(id: number, venda: NovaVendaRequest): Promise<{ id: number; total: number; message: string }> {
+    const response = await api.put(`/vendas/${id}/pre-venda`, venda);
+    return response.data;
+  },
+
   // Atualizar status da venda
   async atualizarStatus(id: number, status: 'pendente' | 'pago' | 'cancelado'): Promise<{ message: string }> {
     const response = await api.put(`/vendas/${id}/status`, { status });

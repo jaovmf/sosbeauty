@@ -7,6 +7,11 @@ import { authenticate } from '../middleware/auth';
 
 const router = express.Router();
 
+const supportsTransactions = (): boolean => {
+  const topologyType = (mongoose.connection as any)?.client?.topology?.description?.type as string | undefined;
+  return topologyType === 'ReplicaSetWithPrimary' || topologyType === 'Sharded';
+};
+
 // Todas as rotas precisam de autenticação
 router.use(authenticate);
 
@@ -74,8 +79,12 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
 
 // Criar nova entrada de mercadoria
 router.post('/', async (req: Request, res: Response): Promise<void> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const useTransaction = supportsTransactions();
+  const session = useTransaction ? await mongoose.startSession() : null;
+
+  if (session) {
+    session.startTransaction();
+  }
 
   try {
     const {
@@ -88,27 +97,40 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     // Validações
     if (!fornecedor_id) {
-      await session.abortTransaction();
+      if (session) {
+        await session.abortTransaction();
+      }
       res.status(400).json({ error: 'Fornecedor é obrigatório' });
       return;
     }
 
     if (!itens || !Array.isArray(itens) || itens.length === 0) {
-      await session.abortTransaction();
+      if (session) {
+        await session.abortTransaction();
+      }
       res.status(400).json({ error: 'Deve haver pelo menos um item na entrada' });
       return;
     }
 
     // Verificar se o fornecedor existe e está ativo
-    const fornecedor = await Fornecedor.findById(fornecedor_id).session(session);
+    const fornecedorQuery = Fornecedor.findById(fornecedor_id);
+    if (session) {
+      fornecedorQuery.session(session);
+    }
+    const fornecedor = await fornecedorQuery;
+
     if (!fornecedor) {
-      await session.abortTransaction();
+      if (session) {
+        await session.abortTransaction();
+      }
       res.status(404).json({ error: 'Fornecedor não encontrado' });
       return;
     }
 
     if (!fornecedor.ativo) {
-      await session.abortTransaction();
+      if (session) {
+        await session.abortTransaction();
+      }
       res.status(400).json({ error: 'Fornecedor está inativo' });
       return;
     }
@@ -121,15 +143,24 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       const { produto_id, quantidade, custo_unitario } = item;
 
       if (!produto_id || !quantidade || quantidade <= 0 || custo_unitario < 0) {
-        await session.abortTransaction();
+        if (session) {
+          await session.abortTransaction();
+        }
         res.status(400).json({ error: 'Dados inválidos nos itens' });
         return;
       }
 
       // Verificar se o produto existe
-      const produto = await Produto.findById(produto_id).session(session);
+      const produtoQuery = Produto.findById(produto_id);
+      if (session) {
+        produtoQuery.session(session);
+      }
+      const produto = await produtoQuery;
+
       if (!produto) {
-        await session.abortTransaction();
+        if (session) {
+          await session.abortTransaction();
+        }
         res.status(404).json({ error: `Produto ${produto_id} não encontrado` });
         return;
       }
@@ -151,7 +182,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
           $inc: { stock: quantidade },
           $set: { cost: custo_unitario }
         },
-        { session }
+        session ? { session } : undefined
       );
     }
 
@@ -163,12 +194,14 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       itens: itensProcessados,
       custo_total: custoTotal,
       observacoes: observacoes?.trim(),
-      usuario_id: (req as any).user.id
+      usuario_id: req.userId
     });
 
-    await entrada.save({ session });
+    await entrada.save(session ? { session } : undefined);
 
-    await session.commitTransaction();
+    if (session) {
+      await session.commitTransaction();
+    }
 
     // Buscar entrada completa com populate
     const entradaCompleta = await EntradaMercadoria.findById(entrada._id)
@@ -181,32 +214,48 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       entrada: entradaCompleta
     });
   } catch (error: any) {
-    await session.abortTransaction();
+    if (session) {
+      await session.abortTransaction();
+    }
     console.error('Erro ao criar entrada:', error);
     res.status(500).json({ error: 'Erro ao criar entrada de mercadoria' });
   } finally {
-    session.endSession();
+    if (session) {
+      session.endSession();
+    }
   }
 });
 
 // Cancelar entrada de mercadoria (reverter estoque)
 router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const useTransaction = supportsTransactions();
+  const session = useTransaction ? await mongoose.startSession() : null;
+
+  if (session) {
+    session.startTransaction();
+  }
 
   try {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      await session.abortTransaction();
+      if (session) {
+        await session.abortTransaction();
+      }
       res.status(400).json({ error: 'ID inválido' });
       return;
     }
 
-    const entrada = await EntradaMercadoria.findById(id).session(session);
+    const entradaQuery = EntradaMercadoria.findById(id);
+    if (session) {
+      entradaQuery.session(session);
+    }
+    const entrada = await entradaQuery;
 
     if (!entrada) {
-      await session.abortTransaction();
+      if (session) {
+        await session.abortTransaction();
+      }
       res.status(404).json({ error: 'Entrada não encontrada' });
       return;
     }
@@ -218,25 +267,35 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
         {
           $inc: { stock: -item.quantidade }
         },
-        { session }
+        session ? { session } : undefined
       );
     }
 
     // Deletar a entrada
-    await EntradaMercadoria.findByIdAndDelete(id).session(session);
+    const deleteQuery = EntradaMercadoria.findByIdAndDelete(id);
+    if (session) {
+      deleteQuery.session(session);
+    }
+    await deleteQuery;
 
-    await session.commitTransaction();
+    if (session) {
+      await session.commitTransaction();
+    }
 
     res.json({
       message: 'Entrada de mercadoria cancelada com sucesso',
       entrada
     });
   } catch (error) {
-    await session.abortTransaction();
+    if (session) {
+      await session.abortTransaction();
+    }
     console.error('Erro ao cancelar entrada:', error);
     res.status(500).json({ error: 'Erro ao cancelar entrada de mercadoria' });
   } finally {
-    session.endSession();
+    if (session) {
+      session.endSession();
+    }
   }
 });
 

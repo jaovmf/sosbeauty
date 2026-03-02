@@ -35,10 +35,11 @@ import {
   CheckCircle as CheckIcon,
   Visibility as ViewIcon,
   WhatsApp as WhatsAppIcon,
-  FilterList as FilterIcon
+  FilterList as FilterIcon,
+  Edit as EditIcon
 } from '@mui/icons-material';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { sendWhatsAppMessage } from '../SalesScreen/functions/sendWhatsAppMessage';
+import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 
 interface VendaDetalhada {
@@ -75,6 +76,7 @@ interface VendaItem {
 }
 
 const SalesManagement = () => {
+  const navigate = useNavigate();
   const [vendas, setVendas] = useState<VendaDetalhada[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -150,7 +152,7 @@ const SalesManagement = () => {
     }
   };
 
-  const handleSendWhatsApp = async (venda: VendaDetalhada) => {
+  const handleSendWhatsApp = async (venda: VendaDetalhada, tipo: 'pre_venda' | 'confirmacao' = 'confirmacao') => {
     try {
       const vendaResponse = await api.get(`/vendas/${venda.id}`);
       const vendaCompleta = vendaResponse.data;
@@ -162,33 +164,22 @@ const SalesManagement = () => {
         throw new Error('Venda não possui itens');
       }
 
-      const saleData = {
-        saleNumber: venda.id.toString().padStart(6, '0'),
-        date: new Date(venda.created_at),
-        client: {
-          name: cliente.name,
-          phone: cliente.phone,
-          address: {
-            street: cliente.street,
-            neighborhood: cliente.neighborhood,
-            city: cliente.city,
-            state: cliente.state,
-            zipCode: cliente.zipCode
-          }
-        },
-        items: vendaCompleta.itens.map((item: any) => ({
-          product: { name: item.produto_nome },
-          quantity: item.quantidade,
-          total: item.subtotal
-        })),
-        subtotal: venda.total,
-        freeShipping: vendaCompleta.shipping_value === 0,
-        shippingValue: vendaCompleta.shipping_value || 0,
-        total: venda.total + (vendaCompleta.shipping_value || 0),
-        paymentMethod: vendaCompleta.payment_method
-      };
+      const clientPhone = (cliente.phone || '').replace(/\D/g, '');
+      if (!clientPhone) {
+        throw new Error('Cliente sem telefone cadastrado');
+      }
 
-      sendWhatsAppMessage(saleData);
+      const itemsList = vendaCompleta.itens
+        .map((item: any) => `• ${item.produto_nome} - Qtd: ${item.quantidade} - ${formatCurrency(item.subtotal)}`)
+        .join('\n');
+
+      const titulo = tipo === 'pre_venda' ? 'Pré-venda / Orçamento' : 'Confirmação de Venda';
+      const numero = tipo === 'pre_venda' ? `ORC-${venda.id}` : `VDA-${venda.id}`;
+      const statusTexto = tipo === 'pre_venda' ? 'Aguardando confirmação' : 'Venda finalizada';
+
+      const message = `*${titulo} - SOS Beauty*\n\n*Número:* ${numero}\n*Data:* ${new Date(venda.created_at).toLocaleDateString('pt-BR')} às ${new Date(venda.created_at).toLocaleTimeString('pt-BR')}\n\n*Cliente:* ${cliente.name}\n*Telefone:* ${cliente.phone || 'Não informado'}\n\n*Endereço de Entrega:*\n${cliente.street || 'Não informado'}\n${cliente.neighborhood || ''}\n${cliente.city || 'Não informado'} - ${cliente.state || ''}\nCEP: ${cliente.zipCode || 'Não informado'}\n\n*Produtos:*\n${itemsList}\n\n*Resumo:*\nFrete: ${vendaCompleta.shipping_value ? formatCurrency(vendaCompleta.shipping_value) : 'Grátis'}\nForma de pagamento: ${vendaCompleta.payment_method || 'Não informado'}\n*Total: ${formatCurrency(vendaCompleta.total)}*\n\n*Status:* ${statusTexto}`;
+
+      window.open(`https://wa.me/55${clientPhone}?text=${encodeURIComponent(message)}`, '_blank');
       setWhatsappOpen(false);
       setConfirmedVenda(null);
     } catch (err: any) {
@@ -320,6 +311,28 @@ const SalesManagement = () => {
                                 <ViewIcon />
                               </IconButton>
                             </Tooltip>
+                            {venda.status === 'pendente' && (
+                              <Tooltip title="Editar pré-venda">
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => navigate(`/sales?preVendaId=${venda.id}`)}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {venda.status === 'pendente' && (
+                              <Tooltip title="Enviar orçamento no WhatsApp">
+                                <IconButton
+                                  size="small"
+                                  sx={{ color: '#25D366' }}
+                                  onClick={() => handleSendWhatsApp(venda, 'pre_venda')}
+                                >
+                                  <WhatsAppIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                             {venda.status === 'pendente' && (
                               <Tooltip title="Confirmar venda">
                                 <IconButton

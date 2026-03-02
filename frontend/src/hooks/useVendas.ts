@@ -53,6 +53,38 @@ export const useVendas = () => {
     }
   }, [listarVendas]);
 
+  const criarPreVenda = useCallback(async (venda: NovaVendaRequest): Promise<{ id: number; total: number; message: string } | null> => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await vendasService.criarPreVenda(venda);
+      await listarVendas();
+      return result;
+    } catch (err: any) {
+      console.error('Erro ao criar pré-venda:', err);
+      setError(err.response?.data?.error || 'Erro ao criar pré-venda');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [listarVendas]);
+
+  const atualizarPreVenda = useCallback(async (id: number, venda: NovaVendaRequest): Promise<{ id: number; total: number; message: string } | null> => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await vendasService.atualizarPreVenda(id, venda);
+      await listarVendas();
+      return result;
+    } catch (err: any) {
+      console.error('Erro ao atualizar pré-venda:', err);
+      setError(err.response?.data?.error || 'Erro ao atualizar pré-venda');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [listarVendas]);
+
   const atualizarStatusVenda = useCallback(async (id: number, status: 'pendente' | 'pago' | 'cancelado'): Promise<boolean> => {
     setLoading(true);
     setError('');
@@ -119,6 +151,8 @@ export const useVendas = () => {
     listarVendas,
     buscarVendaPorId,
     criarVenda,
+    criarPreVenda,
+    atualizarPreVenda,
     atualizarStatusVenda,
     buscarVendasPorCliente,
     buscarVendasPendentes,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -48,6 +48,7 @@ import {
   WhatsApp as WhatsAppIcon
 } from '@mui/icons-material';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { useProdutos } from '../../hooks/useProdutos';
 import { useClientes } from '../../hooks/useClientes';
@@ -67,7 +68,11 @@ const SalesScreen = () => {
   // Hooks para dados
   const { produtos, loading: loadingProdutos, error: errorProdutos, refetch: refetchProdutos } = useProdutos();
   const { clientes, loading: loadingClientes, error: errorClientes, listarClientes } = useClientes();
-  const { criarVenda, loading: loadingVenda, error: errorVenda } = useVendas();
+  const { criarPreVenda, atualizarPreVenda, buscarVendaPorId, loading: loadingVenda, error: errorVenda } = useVendas();
+  const [searchParams] = useSearchParams();
+  const preVendaId = searchParams.get('preVendaId');
+  const isEditingPreVenda = !!preVendaId;
+  const preVendaLoadedRef = useRef(false);
 
   // Estados principais
   const [step, setStep] = useState(1); // 1: Cliente, 2: Produtos, 3: Entrega/Pagamento
@@ -99,6 +104,59 @@ const SalesScreen = () => {
   useEffect(() => {
     listarClientes();
   }, [listarClientes]);
+
+  useEffect(() => {
+    const carregarPreVenda = async () => {
+      if (!isEditingPreVenda || !preVendaId || preVendaLoadedRef.current) return;
+      if (produtos.length === 0 || clientes.length === 0) return;
+
+      const venda: any = await buscarVendaPorId(preVendaId as any);
+
+      if (!venda || venda.status !== 'pendente') {
+        toast.error('Pré-venda não encontrada ou já finalizada');
+        return;
+      }
+
+      const clienteDaVenda = clientes.find((c) => String(c.id) === String(venda.cliente_id));
+      if (clienteDaVenda) {
+        setSelectedClient(clienteDaVenda);
+      }
+
+      const itensCarregados = (venda.itens || [])
+        .map((item: any) => {
+          const produto = produtos.find((p) => String(p.id) === String(item.produto_id));
+          if (!produto) return null;
+
+          return {
+            product: produto,
+            quantity: item.quantidade,
+            total: item.subtotal
+          } as CartItem;
+        })
+        .filter(Boolean) as CartItem[];
+
+      if (itensCarregados.length === 0) {
+        toast.error('Não foi possível carregar itens da pré-venda');
+        return;
+      }
+
+      setCartItems(itensCarregados);
+      setPaymentMethod(venda.payment_method || '');
+      setDescontoTipo(venda.desconto_tipo || '');
+      setDescontoValor(venda.desconto_valor || 0);
+
+      const shippingValue = Number(venda.shipping_value || 0);
+      if (shippingValue === 7) setShippingOption('7');
+      else if (shippingValue === 10) setShippingOption('10');
+      else setShippingOption('free');
+
+      setStep(2);
+      preVendaLoadedRef.current = true;
+      toast.success('Pré-venda carregada para edição');
+    };
+
+    carregarPreVenda();
+  }, [isEditingPreVenda, preVendaId, produtos, clientes, buscarVendaPorId]);
 
   // Resetar quantidade quando produto mudar
   useEffect(() => {
@@ -259,11 +317,13 @@ const SalesScreen = () => {
         saleData.valor_pago = valorPago;
       }
 
-      const result = await criarVenda(saleData);
+      const result = isEditingPreVenda && preVendaId
+        ? await atualizarPreVenda(preVendaId as any, saleData)
+        : await criarPreVenda(saleData);
 
       if (result) {
         const saleDataForWhatsApp = {
-          saleNumber: `VDA-${result.id}`,
+          saleNumber: `ORC-${result.id}`,
           date: new Date().toISOString(),
           client: selectedClient,
           items: cartItems,
@@ -293,13 +353,13 @@ const SalesScreen = () => {
         setError('');
 
         await refetchProdutos();
-        toast.success(`Venda realizada com sucesso! Número: VDA-${result.id}`);
+        toast.success(`Pré-venda salva com sucesso! Número: ORC-${result.id}`);
       } else {
-        setError(errorVenda || 'Erro ao finalizar venda');
+        setError(errorVenda || 'Erro ao salvar pré-venda');
       }
     } catch (error) {
-      console.error('Erro ao finalizar venda:', error);
-      setError('Erro ao finalizar venda. Tente novamente.');
+      console.error('Erro ao salvar pré-venda:', error);
+      setError('Erro ao salvar pré-venda. Tente novamente.');
     } finally {
       setIsProcessing(false);
     }
@@ -342,9 +402,9 @@ const SalesScreen = () => {
       trocoInfo = `\nValor Pago: ${formatCurrency(saleData.valorPago)}\n*Troco: ${formatCurrency(saleData.troco)}*`;
     }
 
-    const message = `*Confirmação de Venda - SOS Beauty*
+    const message = `*Pré-venda / Orçamento - SOS Beauty*
 
-*Número da Venda:* ${saleData.saleNumber}
+  *Número do Orçamento:* ${saleData.saleNumber}
 *Data:* ${new Date(saleData.date).toLocaleDateString('pt-BR')} às ${new Date(saleData.date).toLocaleTimeString('pt-BR')}
 
 *Cliente:* ${saleData.client.name}
@@ -356,7 +416,7 @@ ${saleData.client.neighborhood || ''}
 ${saleData.client.city || 'Não informado'} - ${saleData.client.state || ''}
 CEP: ${saleData.client.zipCode || 'Não informado'}
 
-*Produtos Comprados:*
+*Produtos do Pedido:*
 ${itemsList}
 
 *Resumo Financeiro:*
@@ -365,7 +425,9 @@ Frete: ${saleData.freeShipping ? 'GRÁTIS' : formatCurrency(saleData.shippingVal
 Forma de Pagamento: ${paymentMethods[saleData.paymentMethod] || saleData.paymentMethod}
 *Total Geral: ${formatCurrency(saleData.total)}*${trocoInfo}${pixInfo}
 
-Obrigado pela sua compra!`;
+*Status:* Aguardando confirmação
+
+Se estiver tudo certo, me confirme para finalizarmos sua venda ✅`;
 
     const whatsappUrl = `https://wa.me/55${clientPhone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
@@ -397,7 +459,7 @@ Obrigado pela sua compra!`;
         {/* Header */}
         <Box mb={3}>
           <Typography variant="h5" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-            Nova Venda
+            {isEditingPreVenda ? 'Editar Pré-venda' : 'Nova Pré-venda'}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             Etapa {step} de 3
@@ -724,7 +786,7 @@ Obrigado pela sua compra!`;
           <Card elevation={2}>
             <CardContent sx={{ p: { xs: 2, md: 3 } }}>
               <Typography variant="h6" fontWeight="bold" gutterBottom>
-                Finalizar Venda
+                Salvar Pré-venda
               </Typography>
 
               <Divider sx={{ my: 2 }} />
@@ -944,7 +1006,7 @@ Obrigado pela sua compra!`;
                   startIcon={isProcessing ? <CircularProgress size={20} /> : <CheckIcon />}
                   fullWidth
                 >
-                  {isProcessing ? 'Processando...' : 'Finalizar Venda'}
+                  {isProcessing ? 'Processando...' : 'Salvar Pré-venda'}
                 </Button>
               </Box>
             </CardContent>
@@ -962,13 +1024,13 @@ Obrigado pela sua compra!`;
             <Box display="flex" alignItems="center" gap={1}>
               <WhatsAppIcon color="success" />
               <Typography variant="h6" fontWeight="bold">
-                Enviar Confirmação
+                Enviar Orçamento
               </Typography>
             </Box>
           </DialogTitle>
           <DialogContent>
             <Typography>
-              Deseja enviar a confirmação da venda por WhatsApp para o cliente?
+              Deseja enviar a pré-venda por WhatsApp para o cliente?
             </Typography>
             {pendingSaleData && (
               <Box mt={2} p={2} bgcolor="grey.100" borderRadius={2}>
