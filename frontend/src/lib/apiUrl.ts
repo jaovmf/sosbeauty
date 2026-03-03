@@ -24,6 +24,17 @@ export const getApiUrl = (): string => {
   return 'http://localhost:3003/api';
 };
 
+export const getCatalogWhatsAppNumber = (): string => {
+  const envNumber = import.meta.env.VITE_CATALOG_WHATSAPP_NUMBER;
+  const cleanedEnvNumber = envNumber?.replace(/\D/g, '') || '';
+
+  if (cleanedEnvNumber) {
+    return cleanedEnvNumber;
+  }
+
+  return '5549988106106';
+};
+
 // Função para obter URL base do servidor (sem /api) - útil para imagens
 export const getServerUrl = (): string => {
   const apiUrl = getApiUrl();

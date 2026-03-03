@@ -1,57 +1,65 @@
 import React from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box } from '@mui/material';
 import logo from "../../../assets/logo.webp";
 
 const CatalogHeader = () => {
+  const handleCopyCatalogLink = async () => {
+    const catalogUrl = typeof window !== 'undefined' ? window.location.href : '';
+    if (!catalogUrl) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(catalogUrl);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = catalogUrl;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+    } catch {}
+  };
+
   return (
     <Box
-      display="flex"
-      alignItems="center"
-      justifyContent="space-between"
-      position="relative"
       sx={{
         background: '#ba8feead',
         px: { xs: 2, sm: 3 },
-        py: 1,
-        minHeight: '80px'
+        pt: { xs: 1, sm: 1.25 },
+        pb: { xs: 1.25, sm: 1.5 },
+        minHeight: { xs: 88, sm: 96 },
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}
     >
       <Box
         sx={{
-          position: 'absolute',
-          left: '50%',
-          transform: 'translateX(-50%)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          marginTop: 3,
+          justifyContent: 'center'
         }}
       >
         <Box
           component="img"
           src={logo}
+          onClick={handleCopyCatalogLink}
           sx={{
-            width: { xs: '100px', sm: '120px' },
+            width: { xs: '90px', sm: '110px' },
             height: 'auto',
             transition: 'transform 0.2s',
+            cursor: 'pointer',
             '&:hover': {
               transform: 'scale(1.05)'
             }
           }}
           alt="SOSBeauty Logo"
         />
-        <Typography
-          variant="caption"
-          sx={{
-            color: 'white',
-            fontWeight: 500,
-            mt: 0.5,
-            textAlign: 'center',
-            fontSize: { xs: '0.7rem', sm: '0.75rem' }
-          }}
-        >
-          Catálogo de Produtos
-        </Typography>
       </Box>
     </Box>
   );

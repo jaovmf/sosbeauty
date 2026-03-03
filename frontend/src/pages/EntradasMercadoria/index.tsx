@@ -25,7 +25,9 @@ import {
   CardContent,
   Divider,
   Stack,
-  Chip
+  Chip,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -60,6 +62,16 @@ interface ItemEntrada {
   custo_total: number;
 }
 
+interface NovoProdutoForm {
+  name: string;
+  brand: string;
+  category: string;
+  cost: string;
+  price: string;
+  stock: string;
+  description: string;
+}
+
 interface EntradaMercadoria {
   id: string;
   numero_nota?: string;
@@ -88,8 +100,12 @@ interface EntradaMercadoria {
 }
 
 const EntradasMercadoria = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [categorias, setCategorias] = useState<string[]>([]);
+  const [marcas, setMarcas] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -107,6 +123,20 @@ const EntradasMercadoria = () => {
   // History dialog
   const [historyOpen, setHistoryOpen] = useState(false);
   const [entradas, setEntradas] = useState<EntradaMercadoria[]>([]);
+
+  // Novo produto (cadastro rápido)
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [novoProduto, setNovoProduto] = useState<NovoProdutoForm>({
+    name: '',
+    brand: '',
+    category: '',
+    cost: '',
+    price: '',
+    stock: '',
+    description: ''
+  });
+  const [novoProdutoErrors, setNovoProdutoErrors] = useState<Partial<NovoProdutoForm>>({});
 
   useEffect(() => {
     loadFornecedores();
@@ -128,10 +158,21 @@ const EntradasMercadoria = () => {
     try {
       const response = await api.get('/produtos?ativo=true');
       const data = response.data.produtos || response.data;
-      setProdutos(Array.isArray(data) ? data : []);
+      const lista = Array.isArray(data) ? data : [];
+      setProdutos(lista);
+      const categoriasUnicas = Array.from(
+        new Set(lista.map((p: Produto) => p.category).filter(Boolean) as string[])
+      ).sort((a, b) => a.localeCompare(b));
+      const marcasUnicas = Array.from(
+        new Set(lista.map((p: Produto) => p.brand).filter(Boolean) as string[])
+      ).sort((a, b) => a.localeCompare(b));
+      setCategorias(categoriasUnicas);
+      setMarcas(marcasUnicas);
     } catch (err: any) {
       console.error('Erro ao carregar produtos:', err);
       setProdutos([]);
+      setCategorias([]);
+      setMarcas([]);
     }
   };
 
@@ -253,11 +294,125 @@ const EntradasMercadoria = () => {
     setHistoryOpen(true);
   };
 
+  const handleNovoProdutoChange = (field: keyof NovoProdutoForm, value: string) => {
+    setNovoProduto((prev) => ({ ...prev, [field]: value }));
+    if (novoProdutoErrors[field]) {
+      setNovoProdutoErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const resetNovoProduto = () => {
+    setNovoProduto({
+      name: '',
+      brand: '',
+      category: '',
+      cost: '',
+      price: '',
+      stock: '',
+      description: ''
+    });
+    setNovoProdutoErrors({});
+  };
+
+  const validateNovoProduto = () => {
+    const errors: Partial<NovoProdutoForm> = {};
+
+    if (!novoProduto.name.trim()) {
+      errors.name = 'Nome é obrigatório';
+    }
+
+    if (!novoProduto.brand.trim()) {
+      errors.brand = 'Marca é obrigatória';
+    }
+
+    if (!novoProduto.category.trim()) {
+      errors.category = 'Categoria é obrigatória';
+    }
+
+    const cost = parseFloat(novoProduto.cost || '0');
+    if (Number.isNaN(cost) || cost < 0) {
+      errors.cost = 'Custo deve ser maior ou igual a zero';
+    }
+
+    const price = parseFloat(novoProduto.price || '0');
+    if (Number.isNaN(price) || price <= 0) {
+      errors.price = 'Preço deve ser maior que zero';
+    }
+
+    if (!Number.isNaN(cost) && !Number.isNaN(price) && cost >= price) {
+      errors.price = 'Preço deve ser maior que o custo';
+    }
+
+    const stockValue = novoProduto.stock === '' ? 0 : parseInt(novoProduto.stock, 10);
+    if (Number.isNaN(stockValue) || stockValue < 0) {
+      errors.stock = 'Estoque deve ser maior ou igual a zero';
+    }
+
+    setNovoProdutoErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSalvarNovoProduto = async () => {
+    if (!validateNovoProduto()) {
+      return;
+    }
+
+    try {
+      setSavingProduct(true);
+
+      const stockValue = novoProduto.stock === '' ? 0 : parseInt(novoProduto.stock, 10);
+      const payload = {
+        name: novoProduto.name.trim(),
+        brand: novoProduto.brand.trim(),
+        category: novoProduto.category.trim(),
+        cost: parseFloat(novoProduto.cost || '0'),
+        price: parseFloat(novoProduto.price),
+        stock: stockValue,
+        description: novoProduto.description.trim() || undefined
+      };
+
+      const response = await api.post('/produtos', payload);
+      const created = response.data;
+
+      await loadProdutos();
+
+      const createdProduct = {
+        id: created.id,
+        name: created.name,
+        brand: created.brand,
+        cost: created.cost,
+        price: created.price,
+        stock: created.stock
+      } as Produto;
+
+      const itemSemProdutoIndex = itens.findIndex((item) => !item.produto);
+      if (itemSemProdutoIndex >= 0) {
+        handleItemChange(itemSemProdutoIndex, 'produto', createdProduct);
+        handleItemChange(itemSemProdutoIndex, 'custo_unitario', createdProduct.cost || 0);
+      }
+
+      setSuccess('Produto cadastrado com sucesso! Agora você pode usá-lo na entrada.');
+      setProductModalOpen(false);
+      resetNovoProduto();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Erro ao cadastrar produto');
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Box mb={4} display="flex" justifyContent="space-between" alignItems="center">
+    <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 }, pb: { xs: 10, md: 4 } }}>
+      <Box
+        mb={{ xs: 2.5, md: 4 }}
+        display="flex"
+        justifyContent="space-between"
+        alignItems={{ xs: 'flex-start', md: 'center' }}
+        flexDirection={{ xs: 'column', sm: 'row' }}
+        gap={{ xs: 1.5, sm: 2 }}
+      >
         <Box>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
+          <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ fontSize: { xs: '2rem', md: '2.125rem' } }}>
             Entrada de Mercadorias
           </Typography>
           <Typography variant="body2" color="text.secondary">
@@ -268,6 +423,7 @@ const EntradasMercadoria = () => {
           variant="outlined"
           startIcon={<HistoryIcon />}
           onClick={handleOpenHistory}
+          sx={{ alignSelf: { xs: 'flex-end', sm: 'auto' } }}
         >
           Ver Histórico
         </Button>
@@ -285,87 +441,121 @@ const EntradasMercadoria = () => {
         </Alert>
       )}
 
-      <Grid container spacing={3}>
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 3,
+          gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' },
+          alignItems: 'start'
+        }}
+      >
         {/* Informações da Entrada */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3 }}>
+        <Box>
+          <Paper sx={{ p: { xs: 2, md: 3 } }}>
             <Typography variant="h6" gutterBottom fontWeight="bold">
               Informações da Entrada
             </Typography>
             <Divider sx={{ mb: 3 }} />
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <Autocomplete
-                  value={fornecedorSelecionado}
-                  onChange={(_, newValue) => setFornecedorSelecionado(newValue)}
-                  options={fornecedores}
-                  getOptionLabel={(option) => option.nome}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Fornecedor *" fullWidth />
-                  )}
-                  renderOption={(props, option) => (
-                    <li {...props}>
-                      <Box>
-                        <Typography variant="body2">{option.nome}</Typography>
-                        {option.razao_social && (
-                          <Typography variant="caption" color="text.secondary">
-                            {option.razao_social}
-                          </Typography>
-                        )}
-                      </Box>
-                    </li>
-                  )}
-                />
-              </Grid>
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', md: '2fr 1fr 1fr' }
+              }}
+            >
+              <Autocomplete
+                fullWidth
+                disablePortal
+                value={fornecedorSelecionado}
+                onChange={(_, newValue) => setFornecedorSelecionado(newValue)}
+                options={fornecedores}
+                getOptionLabel={(option) => option.nome}
+                sx={{ width: '100%' }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Fornecedor *"
+                    placeholder="Selecione o fornecedor"
+                    size={isMobile ? 'small' : 'medium'}
+                    fullWidth
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Box>
+                      <Typography variant="body2">{option.nome}</Typography>
+                      {option.razao_social && (
+                        <Typography variant="caption" color="text.secondary">
+                          {option.razao_social}
+                        </Typography>
+                      )}
+                    </Box>
+                  </li>
+                )}
+              />
 
-              <Grid item xs={12} md={3}>
-                <TextField
-                  fullWidth
-                  label="Número da Nota"
-                  value={numeroNota}
-                  onChange={(e) => setNumeroNota(e.target.value)}
-                />
-              </Grid>
+              <TextField
+                fullWidth
+                label="Número da Nota"
+                value={numeroNota}
+                onChange={(e) => setNumeroNota(e.target.value)}
+              />
 
-              <Grid item xs={12} md={3}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="Data da Entrada"
-                  value={dataEntrada}
-                  onChange={(e) => setDataEntrada(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
+              <TextField
+                fullWidth
+                type="date"
+                label="Data da Entrada"
+                value={dataEntrada}
+                onChange={(e) => setDataEntrada(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
 
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={2}
-                  label="Observações"
-                  value={observacoes}
-                  onChange={(e) => setObservacoes(e.target.value)}
-                />
-              </Grid>
-            </Grid>
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                label="Observações"
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                sx={{ gridColumn: { xs: '1', md: '1 / -1' } }}
+              />
+            </Box>
           </Paper>
 
           {/* Items da Entrada */}
-          <Paper sx={{ p: 3, mt: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Paper sx={{ p: { xs: 2, md: 3 }, mt: 3 }}>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems={{ xs: 'stretch', md: 'center' }}
+              flexDirection={{ xs: 'column', md: 'row' }}
+              gap={{ xs: 1.5, md: 1 }}
+              mb={2}
+            >
               <Typography variant="h6" fontWeight="bold">
                 Produtos
               </Typography>
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={handleAddItem}
-              >
-                Adicionar Item
-              </Button>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={() => setProductModalOpen(true)}
+                  fullWidth={isMobile}
+                >
+                  Cadastrar Produto
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<AddIcon />}
+                  onClick={handleAddItem}
+                  fullWidth={isMobile}
+                >
+                  Adicionar Item
+                </Button>
+              </Stack>
             </Box>
             <Divider sx={{ mb: 2 }} />
 
@@ -377,6 +567,8 @@ const EntradasMercadoria = () => {
                 </Typography>
               </Box>
             ) : (
+              <>
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
               <TableContainer>
                 <Table>
                   <TableHead>
@@ -449,13 +641,95 @@ const EntradasMercadoria = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
+              </Box>
+
+              <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Stack spacing={1.5}>
+                  {itens.map((item, index) => (
+                    <Paper key={index} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                        <Typography variant="subtitle2" fontWeight={700}>
+                          Item {index + 1}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleRemoveItem(index)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+
+                      <Stack spacing={1.25}>
+                        <Autocomplete
+                          value={item.produto}
+                          onChange={(_, newValue) => handleItemChange(index, 'produto', newValue)}
+                          options={produtos}
+                          getOptionLabel={(option) => `${option.name}${option.brand ? ` - ${option.brand}` : ''}`}
+                          renderInput={(params) => (
+                            <TextField {...params} size="small" label="Produto" placeholder="Selecione um produto" />
+                          )}
+                          renderOption={(props, option) => (
+                            <li {...props}>
+                              <Box>
+                                <Typography variant="body2">{option.name}</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Estoque atual: {option.stock} | Custo: {formatCurrency(option.cost || 0)}
+                                </Typography>
+                              </Box>
+                            </li>
+                          )}
+                        />
+
+                        <Stack direction="row" spacing={1}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            type="number"
+                            label="Quantidade"
+                            value={item.quantidade}
+                            onChange={(e) => handleItemChange(index, 'quantidade', Number(e.target.value))}
+                            inputProps={{ min: 1, step: 1 }}
+                          />
+                          <TextField
+                            fullWidth
+                            size="small"
+                            type="number"
+                            label="Custo Unit."
+                            value={item.custo_unitario}
+                            onChange={(e) => handleItemChange(index, 'custo_unitario', Number(e.target.value))}
+                            inputProps={{ min: 0, step: 0.01 }}
+                          />
+                        </Stack>
+
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                          <Typography variant="body2" color="text.secondary">Total do item</Typography>
+                          <Typography variant="subtitle1" fontWeight={700} color="primary">
+                            {formatCurrency(item.custo_total)}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+              </Box>
+              </>
             )}
           </Paper>
-        </Grid>
+        </Box>
 
         {/* Resumo */}
-        <Grid item xs={12} md={4}>
-          <Card sx={{ position: 'sticky', top: 24 }}>
+        <Box>
+          <Card
+            sx={{
+              display: 'block',
+              width: '100%',
+              maxWidth: '100%',
+              boxSizing: 'border-box',
+              position: { xs: 'static', md: 'sticky' },
+              top: 24
+            }}
+          >
             <CardContent>
               <Typography variant="h6" gutterBottom fontWeight="bold">
                 Resumo
@@ -515,8 +789,8 @@ const EntradasMercadoria = () => {
               </Stack>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       {/* Histórico Dialog */}
       <Dialog open={historyOpen} onClose={() => setHistoryOpen(false)} maxWidth="lg" fullWidth>
@@ -569,6 +843,112 @@ const EntradasMercadoria = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setHistoryOpen(false)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={productModalOpen} onClose={() => setProductModalOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Cadastrar Produto na Entrada</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Nome do produto *"
+                value={novoProduto.name}
+                onChange={(e) => handleNovoProdutoChange('name', e.target.value)}
+                error={!!novoProdutoErrors.name}
+                helperText={novoProdutoErrors.name}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Autocomplete
+                freeSolo
+                options={marcas}
+                value={novoProduto.brand}
+                onChange={(_, newValue) => handleNovoProdutoChange('brand', typeof newValue === 'string' ? newValue : '')}
+                onInputChange={(_, newInputValue) => handleNovoProdutoChange('brand', newInputValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Marca *"
+                    error={!!novoProdutoErrors.brand}
+                    helperText={novoProdutoErrors.brand || 'Selecione uma marca existente ou digite uma nova'}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Autocomplete
+                freeSolo
+                options={categorias}
+                value={novoProduto.category}
+                onChange={(_, newValue) => handleNovoProdutoChange('category', typeof newValue === 'string' ? newValue : '')}
+                onInputChange={(_, newInputValue) => handleNovoProdutoChange('category', newInputValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Categoria *"
+                    error={!!novoProdutoErrors.category}
+                    helperText={novoProdutoErrors.category || 'Selecione uma categoria existente ou digite uma nova'}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Custo"
+                value={novoProduto.cost}
+                onChange={(e) => handleNovoProdutoChange('cost', e.target.value)}
+                error={!!novoProdutoErrors.cost}
+                helperText={novoProdutoErrors.cost}
+                inputProps={{ min: 0, step: 0.01 }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Preço de venda *"
+                value={novoProduto.price}
+                onChange={(e) => handleNovoProdutoChange('price', e.target.value)}
+                error={!!novoProdutoErrors.price}
+                helperText={novoProdutoErrors.price}
+                inputProps={{ min: 0, step: 0.01 }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Estoque inicial"
+                value={novoProduto.stock}
+                onChange={(e) => handleNovoProdutoChange('stock', e.target.value)}
+                error={!!novoProdutoErrors.stock}
+                helperText={novoProdutoErrors.stock || 'Opcional (padrão 0)'}
+                inputProps={{ min: 0, step: 1 }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                label="Descrição (opcional)"
+                value={novoProduto.description}
+                onChange={(e) => handleNovoProdutoChange('description', e.target.value)}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setProductModalOpen(false); resetNovoProduto(); }} disabled={savingProduct}>
+            Cancelar
+          </Button>
+          <Button variant="contained" onClick={handleSalvarNovoProduto} disabled={savingProduct}>
+            {savingProduct ? 'Salvando...' : 'Salvar Produto'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>

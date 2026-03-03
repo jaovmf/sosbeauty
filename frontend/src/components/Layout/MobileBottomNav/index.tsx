@@ -3,14 +3,21 @@ import {
   BottomNavigation,
   BottomNavigationAction,
   Paper,
-  SpeedDial,
-  SpeedDialAction,
-  SpeedDialIcon,
+  Drawer,
+  Box,
+  Typography,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Divider,
   useTheme,
 } from '@mui/material';
 import {
   Home as HomeIcon,
   ShoppingCart as ShoppingCartIcon,
+  PointOfSale as PointOfSaleIcon,
+  LocalShipping as LocalShippingIcon,
   Inventory as InventoryIcon,
   Assessment as AssessmentIcon,
   AddBox as AddBoxIcon,
@@ -25,23 +32,25 @@ const mainActions = [
   { label: 'Home', value: '/', icon: <HomeIcon /> },
   { label: 'Vender', value: '/sales', icon: <ShoppingCartIcon /> },
   { label: 'Estoque', value: '/stock', icon: <InventoryIcon /> },
-  { label: 'Catálogo', value: '/catalog', icon: <StorefrontIcon /> },
+  { label: 'Gerenciar', value: '/sales-management', icon: <PointOfSaleIcon /> },
   { label: 'Mais', value: 'more', icon: <AssessmentIcon /> },
 ];
 
 const speedDialActions = [
-  { icon: <AssessmentIcon />, name: 'Relatórios', path: '/reports' },
-  { icon: <PeopleIcon />, name: 'Clientes', path: '/clients-list' },
-  { icon: <ManageAccountsIcon />, name: 'CRM', path: '/crm' },
   { icon: <PersonAddIcon />, name: 'Cadastrar Cliente', path: '/clients' },
   { icon: <AddBoxIcon />, name: 'Adicionar Produto', path: '/products' },
+  { icon: <LocalShippingIcon />, name: 'Entrada Mercadoria', path: '/entradas' },
+  { icon: <PeopleIcon />, name: 'Clientes', path: '/clients-list' },
+  { icon: <AssessmentIcon />, name: 'Relatórios', path: '/reports' },
+  { icon: <ManageAccountsIcon />, name: 'CRM', path: '/crm' },
+  { icon: <StorefrontIcon />, name: 'Catálogo', path: '/catalog' },
 ];
 
 const MobileBottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
-  const [openSpeedDial, setOpenSpeedDial] = useState(false);
+  const [openMoreDrawer, setOpenMoreDrawer] = useState(false);
 
   const getCurrentValue = () => {
     const path = location.pathname;
@@ -52,23 +61,21 @@ const MobileBottomNav = () => {
     const isSpeedDialPath = speedDialActions.some((action) => action.path === path);
     if (isSpeedDialPath) return 'more';
 
-    // Se estiver em gerenciar vendas, retorna 'Vender'
-    if (path === '/sales-management') return '/sales';
-
     return '/';
   };
 
-  const handleNavigation = (_event: React.SyntheticEvent, newValue: string) => {
-    if (newValue === 'more') {
-      setOpenSpeedDial(true);
+  const handleNavigation = (value: string) => {
+    if (value === 'more') {
+      setOpenMoreDrawer((prev) => !prev);
       return;
     }
-    navigate(newValue);
+    setOpenMoreDrawer(false);
+    navigate(value);
   };
 
   const handleSpeedDialAction = (path: string) => {
     navigate(path);
-    setOpenSpeedDial(false);
+    setOpenMoreDrawer(false);
   };
 
   return (
@@ -87,7 +94,6 @@ const MobileBottomNav = () => {
       >
         <BottomNavigation
           value={getCurrentValue()}
-          onChange={handleNavigation}
           showLabels
           sx={{
             height: 70,
@@ -111,42 +117,59 @@ const MobileBottomNav = () => {
               label={action.label}
               value={action.value}
               icon={action.icon}
+              onClick={() => handleNavigation(action.value)}
             />
           ))}
         </BottomNavigation>
       </Paper>
 
-      <SpeedDial
-        ariaLabel="Mais opções"
+      <Drawer
+        anchor="right"
+        open={openMoreDrawer}
+        onClose={() => setOpenMoreDrawer(false)}
         sx={{
-          position: 'fixed',
-          bottom: 90,
-          right: 16,
-          display: { xs: 'flex', md: 'none' },
-          '& .MuiFab-primary': {
-            backgroundColor: theme.palette.primary.main,
-          },
-        }}
-        icon={<SpeedDialIcon />}
-        open={openSpeedDial}
-        onClose={() => setOpenSpeedDial(false)}
-        onOpen={() => setOpenSpeedDial(true)}
-        FabProps={{
-          sx: {
-            display: getCurrentValue() === 'more' ? 'flex' : 'none',
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: '50vw',
+            maxWidth: 360,
+            minWidth: 240,
+            borderTopLeftRadius: 12,
+            borderBottomLeftRadius: 12,
+            boxShadow: theme.shadows[8],
+            pb: 10,
           },
         }}
       >
-        {speedDialActions.map((action) => (
-          <SpeedDialAction
-            key={action.name}
-            icon={action.icon}
-            tooltipTitle={action.name}
-            onClick={() => handleSpeedDialAction(action.path)}
-            tooltipPlacement="left"
-          />
-        ))}
-      </SpeedDial>
+        <Box sx={{ p: 2 }}>
+          <Typography variant="subtitle1" fontWeight={700} color="text.primary">
+            Mais opções
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Atalhos rápidos
+          </Typography>
+        </Box>
+
+        <Divider />
+
+        <List sx={{ px: 1, pt: 1 }}>
+          {speedDialActions.map((action) => (
+            <ListItemButton
+              key={action.name}
+              onClick={() => handleSpeedDialAction(action.path)}
+              sx={{
+                borderRadius: 1.5,
+                mb: 0.5,
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: 'primary.main' }}>{action.icon}</ListItemIcon>
+              <ListItemText
+                primary={action.name}
+                primaryTypographyProps={{ fontSize: 14, fontWeight: 500 }}
+              />
+            </ListItemButton>
+          ))}
+        </List>
+      </Drawer>
     </>
   );
 };

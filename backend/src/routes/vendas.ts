@@ -445,6 +445,33 @@ router.put('/:id/confirm', async (req: Request, res: Response): Promise<void> =>
   }
 });
 
+// Endpoint para cancelar pré-venda pendente
+router.put('/:id/cancel-pre-venda', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const venda = await Venda.findById(id);
+
+    if (!venda) {
+      res.status(404).json({ error: 'Venda não encontrada' });
+      return;
+    }
+
+    if (venda.status !== 'pendente') {
+      res.status(400).json({ error: 'Somente pré-vendas pendentes podem ser canceladas' });
+      return;
+    }
+
+    venda.status = 'cancelado';
+    await venda.save();
+
+    res.json({ message: 'Pré-venda cancelada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao cancelar pré-venda:', error);
+    res.status(500).json({ error: 'Erro ao cancelar pré-venda' });
+  }
+});
+
 // Listar vendas com filtros
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {

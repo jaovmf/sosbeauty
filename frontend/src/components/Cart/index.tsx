@@ -235,6 +235,10 @@ const Cart: React.FC = () => {
                         O pagamento será feito na hora da entrega.
                       </Alert>
                     )}
+
+                    <Alert severity="warning" sx={{ fontSize: '0.875rem' }}>
+                      O valor da entrega será calculado após a confirmação do pedido.
+                    </Alert>
                   </Stack>
                 </Box>
               </>

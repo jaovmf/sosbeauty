@@ -31,12 +31,15 @@ import {
   Divider,
   TextField
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import {
   CheckCircle as CheckIcon,
   Visibility as ViewIcon,
   WhatsApp as WhatsAppIcon,
   FilterList as FilterIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  Cancel as CancelIcon
 } from '@mui/icons-material';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { useNavigate } from 'react-router-dom';
@@ -76,6 +79,8 @@ interface VendaItem {
 }
 
 const SalesManagement = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const [vendas, setVendas] = useState<VendaDetalhada[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,6 +90,9 @@ const SalesManagement = () => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loadingConfirm, setLoadingConfirm] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [loadingCancel, setLoadingCancel] = useState(false);
+  const [vendaToCancel, setVendaToCancel] = useState<VendaDetalhada | null>(null);
   const [whatsappOpen, setWhatsappOpen] = useState(false);
   const [confirmedVenda, setConfirmedVenda] = useState<VendaDetalhada | null>(null);
   const [shippingValue, setShippingValue] = useState('');
@@ -149,6 +157,20 @@ const SalesManagement = () => {
       setError(err.response?.data?.error || err.message || 'Erro ao confirmar venda');
     } finally {
       setLoadingConfirm(false);
+    }
+  };
+
+  const cancelPreVenda = async (vendaId: number) => {
+    try {
+      setLoadingCancel(true);
+      await api.put(`/vendas/${vendaId}/cancel-pre-venda`);
+      setCancelOpen(false);
+      setVendaToCancel(null);
+      await loadVendas();
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || 'Erro ao cancelar pré-venda');
+    } finally {
+      setLoadingCancel(false);
     }
   };
 
@@ -239,9 +261,9 @@ const SalesManagement = () => {
 
           {/* Filtros */}
           <Paper sx={{ p: 2, mb: 3 }}>
-            <Stack direction="row" alignItems="center" spacing={2}>
+            <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'stretch', md: 'center' }} spacing={2}>
               <FilterIcon />
-              <FormControl size="small" sx={{ minWidth: 200 }}>
+              <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
                 <InputLabel>Status</InputLabel>
                 <Select
                   value={statusFilter}
@@ -254,114 +276,243 @@ const SalesManagement = () => {
                   <MenuItem value="cancelado">Cancelados</MenuItem>
                 </Select>
               </FormControl>
-              <Typography variant="body2" color="textSecondary">
+              <Typography variant="body2" color="textSecondary" sx={{ ml: { xs: 0, md: 1 } }}>
                 {filteredVendas.length} venda(s) encontrada(s)
               </Typography>
             </Stack>
           </Paper>
 
-          <Paper>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>#</TableCell>
-                    <TableCell>Cliente</TableCell>
-                    <TableCell>Total</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Data</TableCell>
-                    <TableCell align="center">Ações</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        <CircularProgress />
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredVendas.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        <Typography variant="body2" color="textSecondary">
-                          Nenhuma venda encontrada
+          {isMobile ? (
+            <Stack spacing={1.5}>
+              {loading ? (
+                <Paper sx={{ p: 4, textAlign: 'center' }}>
+                  <CircularProgress />
+                </Paper>
+              ) : filteredVendas.length === 0 ? (
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="body2" color="textSecondary">
+                    Nenhuma venda encontrada
+                  </Typography>
+                </Paper>
+              ) : (
+                filteredVendas.map((venda) => (
+                  <Paper key={venda.id} sx={{ p: 1.5 }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={700}>
+                          {venda.cliente_nome || 'Cliente não informado'}
                         </Typography>
-                      </TableCell>
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(venda.created_at).toLocaleDateString('pt-BR')} às {new Date(venda.created_at).toLocaleTimeString('pt-BR')}
+                        </Typography>
+                      </Box>
+                      {getStatusChip(venda.status)}
+                    </Box>
+
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                      <Typography variant="caption" color="text.secondary">
+                        Total
+                      </Typography>
+                      <Typography variant="subtitle1" fontWeight={700} color="primary">
+                        {formatCurrency(venda.total)}
+                      </Typography>
+                    </Box>
+
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                        gap: 1,
+                        mt: 1
+                      }}
+                    >
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<ViewIcon />}
+                        onClick={() => loadVendaDetails(venda.id)}
+                        fullWidth
+                        sx={{ minHeight: 38 }}
+                      >
+                        Detalhes
+                      </Button>
+
+                      {venda.status === 'pendente' && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<EditIcon />}
+                          onClick={() => navigate(`/sales?preVendaId=${venda.id}`)}
+                          fullWidth
+                          sx={{ minHeight: 38 }}
+                        >
+                          Editar
+                        </Button>
+                      )}
+
+                      {venda.status === 'pendente' && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<WhatsAppIcon />}
+                          onClick={() => handleSendWhatsApp(venda, 'pre_venda')}
+                          fullWidth
+                          sx={{ minHeight: 38, color: '#25D366', borderColor: '#25D366' }}
+                        >
+                          WhatsApp
+                        </Button>
+                      )}
+
+                      {venda.status === 'pendente' && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          startIcon={<CancelIcon />}
+                          onClick={() => {
+                            setVendaToCancel(venda);
+                            setCancelOpen(true);
+                          }}
+                          fullWidth
+                          sx={{ minHeight: 38 }}
+                        >
+                          Cancelar
+                        </Button>
+                      )}
+
+                      {venda.status === 'pendente' && (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="success"
+                          startIcon={<CheckIcon />}
+                          onClick={() => {
+                            setSelectedVenda(venda);
+                            setConfirmOpen(true);
+                          }}
+                          fullWidth
+                          sx={{ minHeight: 38, gridColumn: '1 / -1' }}
+                        >
+                          Confirmar
+                        </Button>
+                      )}
+                    </Box>
+                  </Paper>
+                ))
+              )}
+            </Stack>
+          ) : (
+            <Paper>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Cliente</TableCell>
+                      <TableCell>Total</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Data</TableCell>
+                      <TableCell align="center">Ações</TableCell>
                     </TableRow>
-                  ) : (
-                    filteredVendas.map((venda) => (
-                      <TableRow key={venda.id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="bold">
-                            #{venda.id.toString().padStart(6, '0')}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{venda.cliente_nome}</TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="bold" color="primary">
-                            {formatCurrency(venda.total)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{getStatusChip(venda.status)}</TableCell>
-                        <TableCell>
-                          {new Date(venda.created_at).toLocaleDateString('pt-BR')} às{' '}
-                          {new Date(venda.created_at).toLocaleTimeString('pt-BR')}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Stack direction="row" spacing={1} justifyContent="center">
-                            <Tooltip title="Ver detalhes">
-                              <IconButton
-                                size="small"
-                                onClick={() => loadVendaDetails(venda.id)}
-                              >
-                                <ViewIcon />
-                              </IconButton>
-                            </Tooltip>
-                            {venda.status === 'pendente' && (
-                              <Tooltip title="Editar pré-venda">
-                                <IconButton
-                                  size="small"
-                                  color="primary"
-                                  onClick={() => navigate(`/sales?preVendaId=${venda.id}`)}
-                                >
-                                  <EditIcon />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                            {venda.status === 'pendente' && (
-                              <Tooltip title="Enviar orçamento no WhatsApp">
-                                <IconButton
-                                  size="small"
-                                  sx={{ color: '#25D366' }}
-                                  onClick={() => handleSendWhatsApp(venda, 'pre_venda')}
-                                >
-                                  <WhatsAppIcon />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                            {venda.status === 'pendente' && (
-                              <Tooltip title="Confirmar venda">
-                                <IconButton
-                                  size="small"
-                                  color="success"
-                                  onClick={() => {
-                                    setSelectedVenda(venda);
-                                    setConfirmOpen(true);
-                                  }}
-                                >
-                                  <CheckIcon />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                          </Stack>
+                  </TableHead>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center">
+                          <CircularProgress />
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
+                    ) : filteredVendas.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center">
+                          <Typography variant="body2" color="textSecondary">
+                            Nenhuma venda encontrada
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredVendas.map((venda) => (
+                        <TableRow key={venda.id} hover>
+                          <TableCell>{venda.cliente_nome}</TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="bold" color="primary">
+                              {formatCurrency(venda.total)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{getStatusChip(venda.status)}</TableCell>
+                          <TableCell>
+                            {new Date(venda.created_at).toLocaleDateString('pt-BR')} às{' '}
+                            {new Date(venda.created_at).toLocaleTimeString('pt-BR')}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Stack direction="row" spacing={1} justifyContent="center">
+                              <Tooltip title="Ver detalhes">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => loadVendaDetails(venda.id)}
+                                >
+                                  <ViewIcon />
+                                </IconButton>
+                              </Tooltip>
+                              {venda.status === 'pendente' && (
+                                <Tooltip title="Editar pré-venda">
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => navigate(`/sales?preVendaId=${venda.id}`)}
+                                  >
+                                    <EditIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {venda.status === 'pendente' && (
+                                <Tooltip title="Enviar orçamento no WhatsApp">
+                                  <IconButton
+                                    size="small"
+                                    sx={{ color: '#25D366' }}
+                                    onClick={() => handleSendWhatsApp(venda, 'pre_venda')}
+                                  >
+                                    <WhatsAppIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {venda.status === 'pendente' && (
+                                <Tooltip title="Confirmar venda">
+                                  <IconButton
+                                    size="small"
+                                    color="success"
+                                    onClick={() => {
+                                      setSelectedVenda(venda);
+                                      setConfirmOpen(true);
+                                    }}
+                                  >
+                                    <CheckIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {venda.status === 'pendente' && (
+                                <Tooltip title="Cancelar pré-venda">
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => {
+                                      setVendaToCancel(venda);
+                                      setCancelOpen(true);
+                                    }}
+                                  >
+                                    <CancelIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          )}
 
           <Dialog
             open={detailsOpen}
@@ -370,7 +521,7 @@ const SalesManagement = () => {
             fullWidth
           >
             <DialogTitle>
-              Detalhes da Venda #{selectedVenda?.id.toString().padStart(6, '0')}
+              Detalhes da Venda
             </DialogTitle>
             <DialogContent>
               {selectedVenda && (
@@ -528,6 +679,53 @@ const SalesManagement = () => {
           </Dialog>
 
           <Dialog
+            open={cancelOpen}
+            onClose={() => !loadingCancel && setCancelOpen(false)}
+            maxWidth="xs"
+            fullWidth
+          >
+            <DialogTitle>Cancelar Pré-venda</DialogTitle>
+            <DialogContent>
+              <Typography variant="body1">
+                Deseja realmente cancelar esta pré-venda?
+              </Typography>
+              {vendaToCancel && (
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Typography variant="body2">
+                    <strong>Cliente:</strong> {vendaToCancel.cliente_nome || 'Não informado'}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Total:</strong> {formatCurrency(vendaToCancel.total)}
+                  </Typography>
+                </Box>
+              )}
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                Essa ação altera o status da pré-venda para cancelada.
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => {
+                  setCancelOpen(false);
+                  setVendaToCancel(null);
+                }}
+                disabled={loadingCancel}
+              >
+                Voltar
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={() => vendaToCancel && cancelPreVenda(vendaToCancel.id)}
+                disabled={loadingCancel}
+                startIcon={loadingCancel ? <CircularProgress size={18} color="inherit" /> : <CancelIcon />}
+              >
+                {loadingCancel ? 'Cancelando...' : 'Cancelar pré-venda'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Dialog
             open={whatsappOpen}
             onClose={() => setWhatsappOpen(false)}
             maxWidth="sm"
@@ -541,7 +739,7 @@ const SalesManagement = () => {
             </DialogTitle>
             <DialogContent>
               <Alert severity="success" sx={{ mb: 2 }}>
-                Venda #{confirmedVenda?.id.toString().padStart(6, '0')} confirmada com sucesso!
+                  Venda confirmada com sucesso!
               </Alert>
 
               <Typography variant="body1" gutterBottom>

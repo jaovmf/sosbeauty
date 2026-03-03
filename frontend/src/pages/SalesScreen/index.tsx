@@ -669,7 +669,7 @@ Se estiver tudo certo, me confirme para finalizarmos sua venda ✅`;
                           setQuantity(finalVal);
                           setQuantityInput(finalVal.toString());
                         }}
-                        inputProps={{ min: 1, max: selectedProduct.stock }}
+                        inputProps={{ min: 1, max: selectedProduct.stock, inputMode: 'numeric', pattern: '[0-9]*' }}
                         error={!quantityInput || parseInt(quantityInput) === 0}
                         helperText={(!quantityInput || parseInt(quantityInput) === 0) ? 'Mínimo: 1' : ''}
                         sx={{ width: 120 }}
@@ -872,7 +872,7 @@ Se estiver tudo certo, me confirme para finalizarmos sua venda ✅`;
                       InputProps={{
                         startAdornment: <InputAdornment position="start">R$</InputAdornment>,
                       }}
-                      inputProps={{ min: 0, step: 0.01 }}
+                      inputProps={{ min: 0, step: 0.01, inputMode: 'decimal' }}
                       helperText={valorPago > 0 && valorPago >= calculateTotal()
                         ? `Troco: ${formatCurrency(calculateTroco())}`
                         : valorPago > 0
@@ -933,7 +933,8 @@ Se estiver tudo certo, me confirme para finalizarmos sua venda ✅`;
                       inputProps={{
                         min: 0,
                         step: descontoTipo === 'percentual' ? 1 : 0.01,
-                        max: descontoTipo === 'percentual' ? 100 : calculateSubtotal()
+                        max: descontoTipo === 'percentual' ? 100 : calculateSubtotal(),
+                        inputMode: descontoTipo === 'percentual' ? 'numeric' : 'decimal'
                       }}
                       placeholder={descontoTipo === 'percentual' ? 'Ex: 10' : 'Ex: 50.00'}
                     />
@@ -990,7 +991,7 @@ Se estiver tudo certo, me confirme para finalizarmos sua venda ✅`;
                 </Box>
               </Box>
 
-              <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
+              <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }} sx={{ display: { xs: 'none', md: 'flex' } }}>
                 <Button
                   variant="outlined"
                   onClick={() => setStep(2)}
@@ -1011,6 +1012,53 @@ Se estiver tudo certo, me confirme para finalizarmos sua venda ✅`;
               </Box>
             </CardContent>
           </Card>
+        )}
+
+        {/* Barra fixa mobile - Resumo + CTA */}
+        {step === 3 && (
+          <Paper
+            elevation={8}
+            sx={{
+              display: { xs: 'block', md: 'none' },
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 70,
+              zIndex: 1200,
+              borderTop: 1,
+              borderColor: 'divider',
+              p: 1.5
+            }}
+          >
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+              <Typography variant="caption" color="text.secondary">
+                Total da pré-venda
+              </Typography>
+              <Typography variant="h6" fontWeight="bold" color="primary.main">
+                {formatCurrency(calculateTotal())}
+              </Typography>
+            </Box>
+
+            <Box display="flex" gap={1}>
+              <Button
+                variant="outlined"
+                onClick={() => setStep(2)}
+                sx={{ minHeight: 44, minWidth: 100 }}
+              >
+                Voltar
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleFinalizeSale}
+                disabled={!canFinalizeSale() || isProcessing}
+                startIcon={isProcessing ? <CircularProgress size={18} /> : <CheckIcon />}
+                fullWidth
+                sx={{ minHeight: 44 }}
+              >
+                {isProcessing ? 'Processando...' : 'Salvar Pré-venda'}
+              </Button>
+            </Box>
+          </Paper>
         )}
 
         {/* Modal WhatsApp */}

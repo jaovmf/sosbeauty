@@ -25,25 +25,9 @@ import {
 import toast from 'react-hot-toast';
 import { useCart } from '../../contexts/CartContext';
 import { useClientes } from '../../hooks/useClientes';
+import { getApiUrl, getCatalogWhatsAppNumber } from '../../lib/apiUrl';
 import { formatCurrency } from '../../utils/formatCurrency';
 import type { Cliente } from '../../types/api';
-
-// Função para obter URL da API
-const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== '') {
-    return import.meta.env.VITE_API_URL;
-  }
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    if (hostname === '192.168.1.7' || hostname === '192.168.1.9') {
-      return `http://${hostname}:3003/api`;
-    }
-    if (hostname.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
-      return `http://${hostname}:3003/api`;
-    }
-  }
-  return 'http://localhost:3003/api';
-};
 
 interface CheckoutModalProps {
   open: boolean;
@@ -255,11 +239,13 @@ ${itemsList}
 
 *Total: ${formatCurrency(total)}*${paymentInfo}
 
+*Entrega:* Valor calculado após a confirmação do pedido
+
 *Status:* Aguardando confirmação
 *Observacao:* ${observacaoExtra}`;
 
       const encodedMessage = encodeURIComponent(message);
-      const whatsappUrl = `https://wa.me/5549988106106?text=${encodedMessage}`;
+      const whatsappUrl = `https://wa.me/${getCatalogWhatsAppNumber()}?text=${encodedMessage}`;
 
       window.open(whatsappUrl, '_blank');
 

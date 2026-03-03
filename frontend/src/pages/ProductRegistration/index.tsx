@@ -11,6 +11,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Autocomplete,
   Alert,
   Card,
   CardContent,
@@ -79,6 +80,8 @@ type ProductFormErrors = {
 const ProductRegistration = () => {
   const { criarProduto, loading: loadingProdutos } = useProdutos();
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [categorias, setCategorias] = useState<string[]>([]);
+  const [marcas, setMarcas] = useState<string[]>([]);
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     brand: '',
@@ -98,6 +101,7 @@ const ProductRegistration = () => {
 
   useEffect(() => {
     loadFornecedores();
+    loadCategorias();
   }, []);
 
   const loadFornecedores = async () => {
@@ -111,16 +115,25 @@ const ProductRegistration = () => {
     }
   };
 
-  const categories = [
-    'Fios',
-    'Colas',
-    'Pinças',
-    'Escovinhas',
-    'Removedores',
-    'Acessórios',
-    'Cuidados',
-    'Outros'
-  ];
+  const loadCategorias = async () => {
+    try {
+      const response = await api.get('/produtos?ativo=true');
+      const data = response.data.produtos || response.data;
+      const lista = Array.isArray(data) ? data : [];
+      const categoriasUnicas = Array.from(
+        new Set(lista.map((p: any) => p.category).filter(Boolean) as string[])
+      ).sort((a, b) => a.localeCompare(b));
+      const marcasUnicas = Array.from(
+        new Set(lista.map((p: any) => p.brand).filter(Boolean) as string[])
+      ).sort((a, b) => a.localeCompare(b));
+      setCategorias(categoriasUnicas);
+      setMarcas(marcasUnicas);
+    } catch (err: any) {
+      console.error('Erro ao carregar categorias:', err);
+      setCategorias([]);
+      setMarcas([]);
+    }
+  };
 
   const handleInputChange = (field: keyof ProductFormData, value: string | File | null) => {
     setFormData(prev => ({
@@ -188,7 +201,7 @@ const ProductRegistration = () => {
 
     // Descrição não é obrigatória
 
-    if (!formData.category) {
+    if (!formData.category.trim()) {
       newErrors.category = 'Categoria é obrigatória';
     }
 
@@ -215,8 +228,8 @@ const ProductRegistration = () => {
       }
     }
 
-    const stock = parseInt(formData.stock);
-    if (!formData.stock || stock < 0) {
+    const stock = formData.stock === '' ? 0 : parseInt(formData.stock, 10);
+    if (Number.isNaN(stock) || stock < 0) {
       newErrors.stock = 'Quantidade em estoque deve ser maior ou igual a zero';
     }
 
@@ -237,13 +250,14 @@ const ProductRegistration = () => {
       formDataToSend.append('name', formData.name.trim());
       formDataToSend.append('brand', formData.brand.trim());
       formDataToSend.append('description', formData.description.trim());
-      formDataToSend.append('category', formData.category);
+      formDataToSend.append('category', formData.category.trim());
       formDataToSend.append('cost', formData.cost);
       formDataToSend.append('price', formData.price);
       if (formData.promotional_price) {
         formDataToSend.append('promotional_price', formData.promotional_price);
       }
-      formDataToSend.append('stock', formData.stock);
+      const stockValue = formData.stock === '' ? '0' : formData.stock;
+      formDataToSend.append('stock', stockValue);
       if (formData.fornecedor_id) {
         formDataToSend.append('fornecedor_id', formData.fornecedor_id);
       }
@@ -276,7 +290,7 @@ const ProductRegistration = () => {
       cost: '',
       price: '',
       promotional_price: '',
-      stock: '',
+      stock: '0',
       fornecedor_id: '',
       image: null
     });
@@ -356,86 +370,58 @@ const ProductRegistration = () => {
                     </Grid>
 
                     <Grid item xs={12} sm={6} md={6} {...({} as any)}>
-                      <TextField
-                        fullWidth
-                        label="Marca"
+                      <Autocomplete
+                        freeSolo
+                        options={marcas}
                         value={formData.brand}
-                        onChange={(e) => handleInputChange('brand', e.target.value)}
-                        error={!!errors.brand}
-                        helperText={errors.brand}
-                        required
-                        sx={{
-                          minWidth: '200px',
-                          '& .MuiInputBase-root': {
-                            height: '56px',
-                            fontSize: '1rem',
-                            minWidth: '200px'
-                          }
-                        }}
+                        onChange={(_, newValue) => handleInputChange('brand', typeof newValue === 'string' ? newValue : '')}
+                        onInputChange={(_, newInputValue) => handleInputChange('brand', newInputValue)}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            fullWidth
+                            label="Marca"
+                            error={!!errors.brand}
+                            helperText={errors.brand || 'Selecione uma marca existente ou digite uma nova'}
+                            required
+                            sx={{
+                              minWidth: '200px',
+                              '& .MuiInputBase-root': {
+                                minHeight: '56px',
+                                fontSize: '1rem',
+                                minWidth: '200px'
+                              }
+                            }}
+                          />
+                        )}
                       />
                     </Grid>
 
                     <Grid item xs={12} {...({} as any)}>
-                      <FormControl
-                        fullWidth
-                        error={!!errors.category}
-                        sx={{
-                          width: '100%',
-                          minWidth: '200px'
-                        }}
-                      >
-                        <InputLabel>Categoria</InputLabel>
-                        <Select
-                          fullWidth
-                          value={formData.category}
-                          onChange={(e) => handleInputChange('category', e.target.value)}
-                          label="Categoria"
-                          required
-                          sx={{
-                            fontSize: '1rem',
-                            minHeight: '56px',
-                            height: '56px',
-                            width: '100%',
-                            minWidth: '150px',
-                            '& .MuiSelect-select': {
-                              fontSize: '1rem',
-                              padding: '16px 14px',
-                              width: '100%',
-                              minWidth: '150px'
-                            },
-                            '& .MuiOutlinedInput-root': {
-                              fontSize: '1rem',
-                              width: '100%',
-                              minWidth: '150px'
-                            },
-                            '& fieldset': {
-                              minWidth: '150px'
-                            }
-                          }}
-                          MenuProps={{
-                            PaperProps: {
-                              sx: {
-                                '& .MuiMenuItem-root': {
-                                  fontSize: '1rem',
-                                  padding: '12px 16px',
-                                  minHeight: '48px'
-                                }
+                      <Autocomplete
+                        freeSolo
+                        options={categorias}
+                        value={formData.category}
+                        onChange={(_, newValue) => handleInputChange('category', typeof newValue === 'string' ? newValue : '')}
+                        onInputChange={(_, newInputValue) => handleInputChange('category', newInputValue)}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Categoria"
+                            required
+                            error={!!errors.category}
+                            helperText={errors.category || 'Selecione uma existente ou digite uma nova categoria'}
+                            sx={{
+                              minWidth: '200px',
+                              '& .MuiInputBase-root': {
+                                minHeight: '56px',
+                                fontSize: '1rem',
+                                minWidth: '200px'
                               }
-                            }
-                          }}
-                        >
-                          {categories.map((category) => (
-                            <MenuItem key={category} value={category}>
-                              {category}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {errors.category && (
-                          <Typography variant="caption" color="error" sx={{ ml: 2, mt: 0.5, fontSize: { xs: '0.8rem', md: '0.75rem' } }}>
-                            {errors.category}
-                          </Typography>
+                            }}
+                          />
                         )}
-                      </FormControl>
+                      />
                     </Grid>
 
                     <Grid item xs={12} {...({} as any)}>
@@ -609,11 +595,10 @@ const ProductRegistration = () => {
                         value={formData.stock}
                         onChange={(e) => handleInputChange('stock', e.target.value)}
                         error={!!errors.stock}
-                        helperText={errors.stock}
+                        helperText={errors.stock || 'Opcional: se deixar vazio, será salvo com 0'}
                         InputProps={{
                           inputProps: { min: 0, inputMode: 'numeric' }
                         }}
-                        required
                         sx={{
                           minWidth: '200px',
                           '& .MuiInputBase-root': {

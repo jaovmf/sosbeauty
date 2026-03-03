@@ -19,7 +19,6 @@ import {
   Chip,
   MenuItem,
   FormControl,
-  InputLabel,
   Select,
   Card,
   CardContent,
@@ -28,10 +27,10 @@ import {
   Stack,
   alpha,
   useTheme,
+  useMediaQuery,
   ToggleButtonGroup,
   ToggleButton,
-  Tooltip,
-  Badge
+  Tooltip
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -56,6 +55,7 @@ import type { Produto } from '../../types/api';
 
 const Stock = () => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const {
     produtos,
     loading,
@@ -246,7 +246,7 @@ const Stock = () => {
           )}
 
           {/* KPIs */}
-          <Grid container spacing={{ xs: 1.5, md: 3 }} mb={3}>
+          <Grid container spacing={{ xs: 1.25, md: 3 }} mb={3}>
             <Grid item xs={6} sm={6} md={2.4}>
               <Card elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
                 <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
@@ -339,7 +339,7 @@ const Stock = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={6} sm={6} md={2.4}>
+            <Grid item xs={12} sm={6} md={2.4}>
               <Card elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
                 <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
                   <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
@@ -369,13 +369,13 @@ const Stock = () => {
                 </Typography>
               </Box>
 
-              <Grid container spacing={2}>
+              <Grid container spacing={{ xs: 1.5, md: 2 }}>
                 {/* Busca */}
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={4} sx={{ order: { xs: 1, md: 1 } }}>
                   <TextField
                     fullWidth
                     size="small"
-                    placeholder="Buscar produto, marca ou categoria..."
+                    placeholder={isMobile ? 'Buscar produto...' : 'Buscar produto, marca ou categoria...'}
                     value={searchTerm}
                     onChange={(e) => {
                       setSearchTerm(e.target.value);
@@ -392,12 +392,15 @@ const Stock = () => {
                 </Grid>
 
                 {/* Categoria */}
-                <Grid item xs={6} md={2}>
+                <Grid item xs={6} md={2} sx={{ order: { xs: 2, md: 2 } }}>
                   <FormControl fullWidth size="small">
-                    <InputLabel>Categoria</InputLabel>
                     <Select
+                      displayEmpty
                       value={categoriaFiltro}
-                      label="Categoria"
+                      renderValue={(selected) => {
+                        if (!selected) return 'Categoria';
+                        return selected;
+                      }}
                       onChange={(e) => {
                         setCategoriaFiltro(e.target.value);
                         setPage(0);
@@ -412,12 +415,15 @@ const Stock = () => {
                 </Grid>
 
                 {/* Marca */}
-                <Grid item xs={6} md={2}>
+                <Grid item xs={6} md={2} sx={{ order: { xs: 3, md: 3 } }}>
                   <FormControl fullWidth size="small">
-                    <InputLabel>Marca</InputLabel>
                     <Select
+                      displayEmpty
                       value={marcaFiltro}
-                      label="Marca"
+                      renderValue={(selected) => {
+                        if (!selected) return 'Marca';
+                        return selected;
+                      }}
                       onChange={(e) => {
                         setMarcaFiltro(e.target.value);
                         setPage(0);
@@ -432,10 +438,11 @@ const Stock = () => {
                 </Grid>
 
                 {/* Status do Estoque */}
-                <Grid item xs={12} md={3}>
+                <Grid item xs={12} md={3} sx={{ order: { xs: 4, md: 4 } }}>
                   <ToggleButtonGroup
                     value={stockFilter}
                     exclusive
+                    orientation={isMobile ? 'vertical' : 'horizontal'}
                     onChange={(_, newValue) => {
                       if (newValue !== null) {
                         setStockFilter(newValue);
@@ -444,39 +451,40 @@ const Stock = () => {
                     }}
                     size="small"
                     fullWidth
+                    sx={{
+                      '& .MuiToggleButton-root': {
+                        textTransform: 'none',
+                        py: isMobile ? 0.75 : 0.5,
+                        whiteSpace: 'nowrap'
+                      }
+                    }}
                   >
                     <ToggleButton value="all">Todos</ToggleButton>
                     <ToggleButton value="ok">OK</ToggleButton>
-                    <ToggleButton value="low">
-                      <Badge badgeContent={kpis.lowStock} color="warning" max={99}>
-                        Baixo
-                      </Badge>
-                    </ToggleButton>
-                    <ToggleButton value="out">
-                      <Badge badgeContent={kpis.outOfStock} color="error" max={99}>
-                        Esgot.
-                      </Badge>
-                    </ToggleButton>
+                    <ToggleButton value="low">Baixo ({kpis.lowStock})</ToggleButton>
+                    <ToggleButton value="out">Esgotado ({kpis.outOfStock})</ToggleButton>
                   </ToggleButtonGroup>
                 </Grid>
 
                 {/* Botão Limpar */}
-                <Grid item xs={12} md={1}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={limparFiltros}
-                    startIcon={<ClearIcon />}
-                    size="small"
-                    sx={{ height: '40px' }}
-                  >
-                    Limpar
-                  </Button>
+                <Grid item xs={12} md={1} sx={{ order: { xs: 5, md: 5 } }}>
+                  <Box display="flex" justifyContent={{ xs: 'flex-start', md: 'stretch' }}>
+                    <Button
+                      fullWidth={!isMobile}
+                      variant="outlined"
+                      onClick={limparFiltros}
+                      startIcon={<ClearIcon />}
+                      size="small"
+                      sx={{ height: '40px', minWidth: { xs: 120, md: 'auto' } }}
+                    >
+                      Limpar
+                    </Button>
+                  </Box>
                 </Grid>
               </Grid>
 
               {/* Filtros Adicionais */}
-              <Box mt={2} display="flex" gap={1} flexWrap="wrap">
+              <Box mt={2} display="flex" gap={1} flexWrap="wrap" alignItems="center">
                 <Chip
                   label="Em Promoção"
                   color={promoFilter ? 'primary' : 'default'}
@@ -613,20 +621,21 @@ const Stock = () => {
                               status.color === 'warning' ? alpha(theme.palette.warning.main, 0.02) : 'background.paper'
                     }}
                   >
-                    <CardContent sx={{ p: 1.5 }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                      <CardContent sx={{ p: 1.75 }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.25} gap={1}>
                         <Box flex={1}>
-                          <Typography variant="body2" fontWeight="bold" gutterBottom>
+                            <Typography variant="body2" fontWeight="bold" sx={{ lineHeight: 1.25 }}>
                             {product.name}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {product.brand} • {product.category}
-                          </Typography>
+                            <Box display="flex" gap={0.75} flexWrap="wrap" mt={0.75}>
+                              {product.brand && <Chip label={product.brand} size="small" variant="outlined" />}
+                              {product.category && <Chip label={product.category} size="small" variant="outlined" icon={<CategoryIcon />} />}
+                            </Box>
                         </Box>
                         <Chip label={status.label} color={status.color} size="small" icon={status.icon} />
                       </Box>
 
-                      <Box display="flex" justifyContent="space-between" alignItems="center" mt={1.5}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mt={1.25}>
                         <Box>
                           {hasPromo ? (
                             <Box>
@@ -647,11 +656,21 @@ const Stock = () => {
                           <Typography variant="caption" color="text.secondary">Estoque</Typography>
                           <Typography variant="h6" fontWeight="bold">{product.stock}</Typography>
                         </Box>
-                        <Box>
-                          <IconButton size="small" color="primary" onClick={() => handleProductClick(product)}>
+                        <Box display="flex" gap={0.75}>
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handleProductClick(product)}
+                            sx={{ border: 1, borderColor: 'primary.main', borderRadius: 1.5 }}
+                          >
                             <EditIcon fontSize="small" />
                           </IconButton>
-                          <IconButton size="small" color="error" onClick={() => handleDeleteProduct(product.id)}>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteProduct(product.id)}
+                            sx={{ border: 1, borderColor: 'error.main', borderRadius: 1.5 }}
+                          >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Box>
