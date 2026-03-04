@@ -36,9 +36,9 @@ interface Fornecedor {
 interface ProductFormData {
   name: string;
   stock: number;
-  price: number;
-  cost: number;
-  promotional_price: number;
+  price: number | '';
+  cost: number | '';
+  promotional_price: number | '';
   fornecedor_id: string;
   image?: File | null;
   currentImage?: string;
@@ -161,28 +161,38 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
   };
 
   const calculateProfitMargin = () => {
-    const sellPrice = formData.promotional_price > 0 ? formData.promotional_price : formData.price;
+    const price = formData.price === '' ? 0 : Number(formData.price);
+    const cost = formData.cost === '' ? 0 : Number(formData.cost);
+    const promotionalPrice = formData.promotional_price === '' ? 0 : Number(formData.promotional_price);
+    const sellPrice = promotionalPrice > 0 ? promotionalPrice : price;
     if (sellPrice <= 0) return 0;
-    return ((sellPrice - formData.cost) / sellPrice) * 100;
+    return ((sellPrice - cost) / sellPrice) * 100;
   };
 
   const calculateProfitValue = () => {
-    const sellPrice = formData.promotional_price > 0 ? formData.promotional_price : formData.price;
-    return sellPrice - formData.cost;
+    const price = formData.price === '' ? 0 : Number(formData.price);
+    const cost = formData.cost === '' ? 0 : Number(formData.cost);
+    const promotionalPrice = formData.promotional_price === '' ? 0 : Number(formData.promotional_price);
+    const sellPrice = promotionalPrice > 0 ? promotionalPrice : price;
+    return sellPrice - cost;
   };
 
   const handleSave = () => {
+    const normalizedPrice = formData.price === '' ? 0 : Number(formData.price);
+    const normalizedCost = formData.cost === '' ? 0 : Number(formData.cost);
+    const normalizedPromotionalPrice = formData.promotional_price === '' ? 0 : Number(formData.promotional_price);
+
     if (!formData.name.trim()) {
       setError('Nome do produto é obrigatório');
       return;
     }
 
-    if (formData.price <= 0) {
+    if (normalizedPrice <= 0) {
       setError('Preço de venda deve ser maior que zero');
       return;
     }
 
-    if (formData.cost < 0) {
+    if (normalizedCost < 0) {
       setError('Custo não pode ser negativo');
       return;
     }
@@ -192,12 +202,12 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
       return;
     }
 
-    if (formData.price <= formData.cost) {
+    if (normalizedPrice <= normalizedCost) {
       setError('Preço de venda deve ser maior que o custo');
       return;
     }
 
-    if (formData.promotional_price > 0 && formData.promotional_price >= formData.price) {
+    if (normalizedPromotionalPrice > 0 && normalizedPromotionalPrice >= normalizedPrice) {
       setError('Preço promocional deve ser menor que o preço normal');
       return;
     }
@@ -208,10 +218,10 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
     formDataToSend.append('brand', product.brand || '');
     formDataToSend.append('description', product.description || '');
     formDataToSend.append('category', product.category || '');
-    formDataToSend.append('cost', formData.cost.toString());
-    formDataToSend.append('price', formData.price.toString());
+    formDataToSend.append('cost', normalizedCost.toString());
+    formDataToSend.append('price', normalizedPrice.toString());
     // Sempre enviar promotional_price, mesmo se for 0 (para remover promoção)
-    formDataToSend.append('promotional_price', formData.promotional_price.toString());
+    formDataToSend.append('promotional_price', normalizedPromotionalPrice.toString());
     formDataToSend.append('stock', formData.stock.toString());
     if (formData.fornecedor_id) {
       formDataToSend.append('fornecedor_id', formData.fornecedor_id);
@@ -351,7 +361,10 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
                   label="Custo do Produto"
                   type="number"
                   value={formData.cost}
-                  onChange={(e) => handleInputChange('cost', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    handleInputChange('cost', nextValue === '' ? '' : parseFloat(nextValue));
+                  }}
                   variant="outlined"
                   size="small"
                   inputProps={{ min: 0, step: 0.01 }}
@@ -367,7 +380,10 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
                   label="Preço de Venda"
                   type="number"
                   value={formData.price}
-                  onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    handleInputChange('price', nextValue === '' ? '' : parseFloat(nextValue));
+                  }}
                   variant="outlined"
                   size="small"
                   inputProps={{ min: 0, step: 0.01 }}
@@ -383,7 +399,10 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
                   label="Preço Promocional (Opcional)"
                   type="number"
                   value={formData.promotional_price || ''}
-                  onChange={(e) => handleInputChange('promotional_price', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    handleInputChange('promotional_price', nextValue === '' ? '' : parseFloat(nextValue));
+                  }}
                   variant="outlined"
                   size="small"
                   inputProps={{ min: 0, step: 0.01 }}
@@ -394,7 +413,7 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
               </Grid>
 
               {/* Resumo Financeiro */}
-              {formData.cost > 0 && formData.price > 0 && (
+              {(formData.cost === '' ? 0 : Number(formData.cost)) > 0 && (formData.price === '' ? 0 : Number(formData.price)) > 0 && (
                 <Grid item xs={12} {...({} as any)}>
                   <Box
                     sx={{
@@ -426,14 +445,14 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
                           </Typography>
                         </Box>
                       </Grid>
-                      {formData.promotional_price > 0 && (
+                      {(formData.promotional_price === '' ? 0 : Number(formData.promotional_price)) > 0 && (
                         <Grid item xs={12} {...({} as any)}>
                           <Box textAlign="center">
                             <Typography variant="caption" color="text.secondary">
                               Desconto Promocional
                             </Typography>
                             <Typography variant="body2" fontWeight="bold" color="secondary.main">
-                              -{Math.round(((formData.price - formData.promotional_price) / formData.price) * 100)}%
+                              -{Math.round((((formData.price === '' ? 0 : Number(formData.price)) - (formData.promotional_price === '' ? 0 : Number(formData.promotional_price))) / (formData.price === '' ? 1 : Number(formData.price))) * 100)}%
                             </Typography>
                           </Box>
                         </Grid>

@@ -280,6 +280,7 @@ const UsuariosManagement: React.FC = () => {
           <Box display="flex" flexDirection="column" gap={2} mt={2}>
             <TextField
               label="Nome"
+              autoComplete="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
@@ -288,6 +289,7 @@ const UsuariosManagement: React.FC = () => {
             <TextField
               label="Email"
               type="email"
+              autoComplete="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
@@ -296,6 +298,7 @@ const UsuariosManagement: React.FC = () => {
             <TextField
               label={editingUser ? 'Nova Senha (deixe em branco para manter)' : 'Senha'}
               type="password"
+              autoComplete={editingUser ? 'new-password' : 'current-password'}
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required={!editingUser}
@@ -303,6 +306,9 @@ const UsuariosManagement: React.FC = () => {
             />
             <TextField
               label="Telefone"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               fullWidth

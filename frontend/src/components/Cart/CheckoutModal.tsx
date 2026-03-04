@@ -333,6 +333,9 @@ ${itemsList}
               <TextField
                 fullWidth
                 label="Número de telefone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(formatPhone(e.target.value))}
                 placeholder="(11) 99999-9999"
@@ -372,6 +375,7 @@ ${itemsList}
                 <TextField
                   fullWidth
                   label="Nome completo"
+                  autoComplete="name"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   required
@@ -382,6 +386,7 @@ ${itemsList}
                   fullWidth
                   label="Email (opcional)"
                   type="email"
+                  autoComplete="email"
                   value={formData.email}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 />
@@ -390,6 +395,9 @@ ${itemsList}
                 <TextField
                   fullWidth
                   label="Telefone"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
                   value={formData.phone}
                   onChange={(e) => setFormData(prev => ({ ...prev, phone: formatPhone(e.target.value) }))}
                   placeholder="(11) 99999-9999"
@@ -400,6 +408,7 @@ ${itemsList}
                 <TextField
                   fullWidth
                   label="Rua"
+                  autoComplete="address-line1"
                   value={formData.street}
                   onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))}
                   placeholder="Rua das Flores"
@@ -410,6 +419,8 @@ ${itemsList}
                 <TextField
                   fullWidth
                   label="Número"
+                  inputMode="numeric"
+                  autoComplete="address-line2"
                   value={formData.number}
                   onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))}
                   placeholder="270"
@@ -420,6 +431,8 @@ ${itemsList}
                 <TextField
                   fullWidth
                   label="CEP"
+                  inputMode="numeric"
+                  autoComplete="postal-code"
                   value={formData.zipCode}
                   onChange={(e) => setFormData(prev => ({ ...prev, zipCode: formatZipCode(e.target.value) }))}
                   placeholder="12345-678"
@@ -430,6 +443,7 @@ ${itemsList}
                 <TextField
                   fullWidth
                   label="Bairro"
+                  autoComplete="address-level3"
                   value={formData.neighborhood}
                   onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
                   required
@@ -439,6 +453,7 @@ ${itemsList}
                 <TextField
                   fullWidth
                   label="Cidade"
+                  autoComplete="address-level2"
                   value={formData.city}
                   onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
                   required
@@ -448,6 +463,7 @@ ${itemsList}
                 <TextField
                   fullWidth
                   label="Estado"
+                  autoComplete="address-level1"
                   value={formData.state}
                   onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value.toUpperCase() }))}
                   placeholder="SC"

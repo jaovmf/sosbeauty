@@ -274,6 +274,7 @@ const ClientRegistration = () => {
                       <TextField
                         fullWidth
                         label="Nome Completo"
+                        autoComplete="name"
                         value={formData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         error={!!errors.name}
@@ -295,6 +296,7 @@ const ClientRegistration = () => {
                         fullWidth
                         label="E-mail (opcional)"
                         type="email"
+                        autoComplete="email"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         error={!!errors.email}
@@ -314,6 +316,9 @@ const ClientRegistration = () => {
                       <TextField
                         fullWidth
                         label="Telefone"
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel-national"
                         value={formData.phone}
                         onChange={(e) => handlePhoneChange(e.target.value)}
                         error={!!errors.phone}
@@ -354,6 +359,7 @@ const ClientRegistration = () => {
                       <TextField
                         fullWidth
                         label="Rua"
+                        autoComplete="address-line1"
                         value={formData.street}
                         onChange={(e) => handleInputChange('street', e.target.value)}
                         error={!!errors.street}
@@ -375,6 +381,8 @@ const ClientRegistration = () => {
                       <TextField
                         fullWidth
                         label="Número"
+                        inputMode="numeric"
+                        autoComplete="address-line2"
                         value={formData.number}
                         onChange={(e) => handleInputChange('number', e.target.value)}
                         error={!!errors.number}
@@ -396,6 +404,8 @@ const ClientRegistration = () => {
                       <TextField
                         fullWidth
                         label="CEP"
+                        inputMode="numeric"
+                        autoComplete="postal-code"
                         value={formData.zipCode}
                         onChange={(e) => handleZipCodeChange(e.target.value)}
                         error={!!errors.zipCode}
@@ -417,6 +427,7 @@ const ClientRegistration = () => {
                       <TextField
                         fullWidth
                         label="Bairro"
+                        autoComplete="address-level3"
                         value={formData.neighborhood}
                         onChange={(e) => handleInputChange('neighborhood', e.target.value)}
                         error={!!errors.neighborhood}
@@ -437,6 +448,7 @@ const ClientRegistration = () => {
                       <TextField
                         fullWidth
                         label="Cidade"
+                        autoComplete="address-level2"
                         value={formData.city}
                         onChange={(e) => handleInputChange('city', e.target.value)}
                         error={!!errors.city}
@@ -457,6 +469,7 @@ const ClientRegistration = () => {
                       <TextField
                         fullWidth
                         label="Estado"
+                        autoComplete="address-level1"
                         value={formData.state}
                         onChange={(e) => handleInputChange('state', e.target.value.toUpperCase())}
                         error={!!errors.state}

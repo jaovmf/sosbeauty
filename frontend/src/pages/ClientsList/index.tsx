@@ -407,6 +407,7 @@ const ClientsList = () => {
                     <TextField
                       fullWidth
                       label="Nome Completo"
+                      autoComplete="name"
                       value={editForm.name}
                       onChange={(e) => handleEditFormChange('name', e.target.value)}
                       error={!!editErrors.name}
@@ -419,6 +420,7 @@ const ClientsList = () => {
                       fullWidth
                       label="Email"
                       type="email"
+                      autoComplete="email"
                       value={editForm.email}
                       onChange={(e) => handleEditFormChange('email', e.target.value)}
                       error={!!editErrors.email}
@@ -430,6 +432,9 @@ const ClientsList = () => {
                     <TextField
                       fullWidth
                       label="Telefone"
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
                       value={editForm.phone}
                       onChange={(e) => handleEditFormChange('phone', e.target.value)}
                       error={!!editErrors.phone}
@@ -442,6 +447,7 @@ const ClientsList = () => {
                     <TextField
                       fullWidth
                       label="Rua"
+                      autoComplete="address-line1"
                       value={editForm.street}
                       onChange={(e) => handleEditFormChange('street', e.target.value)}
                       error={!!editErrors.street}
@@ -453,6 +459,8 @@ const ClientsList = () => {
                     <TextField
                       fullWidth
                       label="CEP"
+                      inputMode="numeric"
+                      autoComplete="postal-code"
                       value={editForm.zipCode}
                       onChange={(e) => handleEditFormChange('zipCode', e.target.value)}
                       error={!!editErrors.zipCode}
@@ -465,6 +473,7 @@ const ClientsList = () => {
                     <TextField
                       fullWidth
                       label="Bairro"
+                      autoComplete="address-level3"
                       value={editForm.neighborhood}
                       onChange={(e) => handleEditFormChange('neighborhood', e.target.value)}
                       error={!!editErrors.neighborhood}
@@ -476,6 +485,7 @@ const ClientsList = () => {
                     <TextField
                       fullWidth
                       label="Cidade"
+                      autoComplete="address-level2"
                       value={editForm.city}
                       onChange={(e) => handleEditFormChange('city', e.target.value)}
                       error={!!editErrors.city}
@@ -487,6 +497,7 @@ const ClientsList = () => {
                     <TextField
                       fullWidth
                       label="Estado"
+                      autoComplete="address-level1"
                       value={editForm.state}
                       onChange={(e) => handleEditFormChange('state', e.target.value)}
                       error={!!editErrors.state}

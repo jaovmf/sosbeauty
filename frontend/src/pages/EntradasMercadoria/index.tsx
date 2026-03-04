@@ -57,8 +57,8 @@ interface Fornecedor {
 
 interface ItemEntrada {
   produto: Produto | null;
-  quantidade: number;
-  custo_unitario: number;
+  quantidade: number | '';
+  custo_unitario: number | '';
   custo_total: number;
 }
 
@@ -207,8 +207,10 @@ const EntradasMercadoria = () => {
 
     // Recalcular custo total do item
     if (field === 'quantidade' || field === 'custo_unitario') {
-      const quantidade = field === 'quantidade' ? value : newItens[index].quantidade;
-      const custoUnitario = field === 'custo_unitario' ? value : newItens[index].custo_unitario;
+      const quantidadeRaw = field === 'quantidade' ? value : newItens[index].quantidade;
+      const custoUnitarioRaw = field === 'custo_unitario' ? value : newItens[index].custo_unitario;
+      const quantidade = quantidadeRaw === '' ? 0 : Number(quantidadeRaw);
+      const custoUnitario = custoUnitarioRaw === '' ? 0 : Number(custoUnitarioRaw);
       newItens[index].custo_total = quantidade * custoUnitario;
     }
 
@@ -235,11 +237,14 @@ const EntradasMercadoria = () => {
         setError('Selecione um produto para todos os itens');
         return false;
       }
-      if (item.quantidade <= 0) {
+      const quantidade = item.quantidade === '' ? 0 : Number(item.quantidade);
+      const custoUnitario = item.custo_unitario === '' ? 0 : Number(item.custo_unitario);
+
+      if (!Number.isFinite(quantidade) || quantidade <= 0) {
         setError('Quantidade deve ser maior que zero');
         return false;
       }
-      if (item.custo_unitario < 0) {
+      if (!Number.isFinite(custoUnitario) || custoUnitario < 0) {
         setError('Custo unitário inválido');
         return false;
       }
@@ -263,8 +268,8 @@ const EntradasMercadoria = () => {
         data_entrada: dataEntrada,
         itens: itens.map(item => ({
           produto_id: item.produto!.id,
-          quantidade: item.quantidade,
-          custo_unitario: item.custo_unitario
+          quantidade: item.quantidade === '' ? 0 : Number(item.quantidade),
+          custo_unitario: item.custo_unitario === '' ? 0 : Number(item.custo_unitario)
         })),
         observacoes: observacoes.trim() || undefined
       };
@@ -609,7 +614,10 @@ const EntradasMercadoria = () => {
                             size="small"
                             type="number"
                             value={item.quantidade}
-                            onChange={(e) => handleItemChange(index, 'quantidade', Number(e.target.value))}
+                            onChange={(e) => {
+                              const nextValue = e.target.value;
+                              handleItemChange(index, 'quantidade', nextValue === '' ? '' : Number(nextValue));
+                            }}
                             inputProps={{ min: 1, step: 1 }}
                           />
                         </TableCell>
@@ -618,7 +626,10 @@ const EntradasMercadoria = () => {
                             size="small"
                             type="number"
                             value={item.custo_unitario}
-                            onChange={(e) => handleItemChange(index, 'custo_unitario', Number(e.target.value))}
+                            onChange={(e) => {
+                              const nextValue = e.target.value;
+                              handleItemChange(index, 'custo_unitario', nextValue === '' ? '' : Number(nextValue));
+                            }}
                             inputProps={{ min: 0, step: 0.01 }}
                           />
                         </TableCell>
@@ -688,7 +699,10 @@ const EntradasMercadoria = () => {
                             type="number"
                             label="Quantidade"
                             value={item.quantidade}
-                            onChange={(e) => handleItemChange(index, 'quantidade', Number(e.target.value))}
+                            onChange={(e) => {
+                              const nextValue = e.target.value;
+                              handleItemChange(index, 'quantidade', nextValue === '' ? '' : Number(nextValue));
+                            }}
                             inputProps={{ min: 1, step: 1 }}
                           />
                           <TextField
@@ -697,7 +711,10 @@ const EntradasMercadoria = () => {
                             type="number"
                             label="Custo Unit."
                             value={item.custo_unitario}
-                            onChange={(e) => handleItemChange(index, 'custo_unitario', Number(e.target.value))}
+                            onChange={(e) => {
+                              const nextValue = e.target.value;
+                              handleItemChange(index, 'custo_unitario', nextValue === '' ? '' : Number(nextValue));
+                            }}
                             inputProps={{ min: 0, step: 0.01 }}
                           />
                         </Stack>
@@ -760,7 +777,7 @@ const EntradasMercadoria = () => {
                     Quantidade Total:
                   </Typography>
                   <Typography variant="body2" fontWeight="medium">
-                    {itens.reduce((sum, item) => sum + item.quantidade, 0)}
+                    {itens.reduce((sum, item) => sum + (item.quantidade === '' ? 0 : Number(item.quantidade)), 0)}
                   </Typography>
                 </Box>
 

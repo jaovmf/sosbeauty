@@ -648,6 +648,7 @@ const SalesManagement = () => {
                   fullWidth
                   label="Valor do Frete (R$)"
                   type="number"
+                  inputMode="decimal"
                   value={shippingValue}
                   onChange={(e) => setShippingValue(e.target.value)}
                   inputProps={{

@@ -478,6 +478,8 @@ const FornecedoresList = () => {
               <TextField
                 fullWidth
                 label="CNPJ"
+                inputMode="numeric"
+                autoComplete="off"
                 value={formData.cnpj}
                 onChange={(e) => handleFormChange('cnpj', e.target.value)}
                 error={!!formErrors.cnpj}
@@ -488,6 +490,7 @@ const FornecedoresList = () => {
                 fullWidth
                 label="Email"
                 type="email"
+                autoComplete="email"
                 value={formData.email}
                 onChange={(e) => handleFormChange('email', e.target.value)}
               />
@@ -497,6 +500,9 @@ const FornecedoresList = () => {
               <TextField
                 fullWidth
                 label="Telefone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
                 value={formData.telefone}
                 onChange={(e) => handleFormChange('telefone', e.target.value)}
                 inputProps={{ maxLength: 15 }}
@@ -504,6 +510,9 @@ const FornecedoresList = () => {
               <TextField
                 fullWidth
                 label="Celular"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
                 value={formData.celular}
                 onChange={(e) => handleFormChange('celular', e.target.value)}
                 inputProps={{ maxLength: 15 }}
@@ -543,6 +552,8 @@ const FornecedoresList = () => {
               />
               <TextField
                 label="CEP"
+                inputMode="numeric"
+                autoComplete="postal-code"
                 value={formData.cep}
                 onChange={(e) => handleFormChange('cep', e.target.value)}
                 inputProps={{ maxLength: 9 }}
@@ -553,6 +564,8 @@ const FornecedoresList = () => {
             <TextField
               fullWidth
               label="Site"
+              type="url"
+              autoComplete="url"
               value={formData.site}
               onChange={(e) => handleFormChange('site', e.target.value)}
             />
