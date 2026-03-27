@@ -431,6 +431,7 @@ router.get('/produtos-mais-vendidos', async (req: Request, res: Response): Promi
       });
     });
 
+
     // Busca todos os produtos cadastrados
     const todosProdutos = await Produto.find();
 
@@ -440,6 +441,7 @@ router.get('/produtos-mais-vendidos', async (req: Request, res: Response): Promi
       return {
         produto_id: produto._id,
         name: produto.name,
+        brand: produto.brand || null,
         quantidade_vendida: info ? info.quantidade : 0,
         receita_total: info ? info.receita : 0
       };

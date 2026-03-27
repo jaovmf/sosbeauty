@@ -666,32 +666,18 @@ const Reports = () => {
         <Box padding={{ xs: 1, sm: 2, md: 3 }}>
           {/* Header */}
           <Box marginBottom={3}>
-            <Box
-              display="flex"
-              alignItems="center"
-              justifyContent="space-between"
-              flexWrap="wrap"
-              gap={2}
-              marginBottom={2}
-            >
+            <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2} marginBottom={2}>
               <Box display="flex" alignItems="center">
                 <AssessmentIcon sx={{ marginRight: 1, fontSize: { xs: 28, md: 32 } }} />
                 <Typography
                   variant="h4"
                   component="h1"
-                  sx={{
-                    fontSize: { xs: '1.75rem', md: '2.125rem' }
-                  }}
+                  sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}
                 >
                   Relatórios de Vendas
                 </Typography>
               </Box>
-              <Box
-                display="flex"
-                gap={1}
-                flexDirection={{ xs: "column", sm: "row" }}
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
-              >
+              <Box display="flex" gap={1} flexDirection={{ xs: "column", sm: "row" }} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                 <Button
                   variant="outlined"
                   startIcon={<FileDownloadIcon />}
@@ -726,52 +712,56 @@ const Reports = () => {
                   Produtos Mais Vendidos
                 </Button>
               </Box>
-                  {/* Tabela de Produtos Mais Vendidos */}
-                  {showProdutosMaisVendidos && (
-                    <Paper elevation={2} sx={{ borderRadius: 3, marginTop: 4, marginBottom: 4 }}>
-                      <Box sx={{ padding: { xs: 2, md: 3 }, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                          Produtos Mais Vendidos (Todos)
-                        </Typography>
-                        <Button
-                          variant="outlined"
-                          startIcon={<FileDownloadIcon />}
-                          onClick={exportarProdutosMaisVendidosCSV}
-                          disabled={produtosMaisVendidos.length === 0}
-                          size="small"
-                        >
-                          Exportar CSV
-                        </Button>
-                      </Box>
-                      {loadingProdutos ? (
-                        <Box display="flex" justifyContent="center" alignItems="center" minHeight={120}>
-                          <CircularProgress />
-                        </Box>
-                      ) : (
-                        <TableContainer>
-                          <Table>
-                            <TableHead>
-                              <TableRow sx={{ backgroundColor: 'primary.50' }}>
-                                <TableCell><strong>Produto</strong></TableCell>
-                                <TableCell align="center"><strong>Quantidade Vendida</strong></TableCell>
-                                <TableCell align="center"><strong>Receita Total</strong></TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {produtosMaisVendidos.map((produto) => (
-                                <TableRow key={produto.produto_id} hover>
-                                  <TableCell>{produto.name}</TableCell>
-                                  <TableCell align="center">{produto.quantidade_vendida}</TableCell>
-                                  <TableCell align="center">{formatCurrency(produto.receita_total)}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      )}
-                    </Paper>
-                  )}
             </Box>
+            {/* Tabela de Produtos Mais Vendidos - AGORA LOGO ABAIXO DO TÍTULO */}
+            {showProdutosMaisVendidos && (
+              <Box marginY={3}>
+                <Paper elevation={2} sx={{ borderRadius: 3, width: '100%', overflowX: 'auto' }}>
+                  <Box sx={{ padding: { xs: 2, md: 3 }, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                    <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
+                      Produtos Mais Vendidos (Todos)
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      startIcon={<FileDownloadIcon />}
+                      onClick={exportarProdutosMaisVendidosCSV}
+                      disabled={produtosMaisVendidos.length === 0}
+                      size="small"
+                    >
+                      Exportar CSV
+                    </Button>
+                  </Box>
+                  {loadingProdutos ? (
+                    <Box display="flex" justifyContent="center" alignItems="center" minHeight={120}>
+                      <CircularProgress />
+                    </Box>
+                  ) : (
+                    <TableContainer sx={{ minWidth: 320 }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ backgroundColor: 'primary.50' }}>
+                            <TableCell><strong>Produto</strong></TableCell>
+                            <TableCell><strong>Marca</strong></TableCell>
+                            <TableCell align="center"><strong>Quantidade Vendida</strong></TableCell>
+                            <TableCell align="center"><strong>Receita Total</strong></TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {produtosMaisVendidos.map((produto) => (
+                            <TableRow key={produto.produto_id} hover>
+                              <TableCell>{produto.name}</TableCell>
+                              <TableCell>{produto.brand || '-'}</TableCell>
+                              <TableCell align="center">{produto.quantidade_vendida}</TableCell>
+                              <TableCell align="center">{formatCurrency(produto.receita_total)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </Paper>
+              </Box>
+            )}
           </Box>
 
           {/* KPI Cards */}
