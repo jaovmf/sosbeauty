@@ -405,4 +405,54 @@ router.get('/dashboard', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// Relatório de todos os produtos e quantidades vendidas
+router.get('/produtos-mais-vendidos', async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Busca todas as vendas pagas
+    const vendas = await Venda.find({ status: 'pago' });
+
+    // Mapeia produto_id para quantidade total vendida
+    const produtosMap = new Map<string, { name: string, quantidade: number, receita: number }>();
+
+    vendas.forEach(venda => {
+      venda.itens.forEach(item => {
+        const produtoId = item.produto_id.toString();
+        if (produtosMap.has(produtoId)) {
+          const prod = produtosMap.get(produtoId)!;
+          prod.quantidade += item.quantidade;
+          prod.receita += item.subtotal;
+        } else {
+          produtosMap.set(produtoId, {
+            name: item.produto_nome,
+            quantidade: item.quantidade,
+            receita: item.subtotal
+          });
+        }
+      });
+    });
+
+    // Busca todos os produtos cadastrados
+    const todosProdutos = await Produto.find();
+
+    // Garante que todos os produtos apareçam, mesmo que não tenham vendas
+    const resultado = todosProdutos.map(produto => {
+      const info = produtosMap.get(produto._id.toString());
+      return {
+        produto_id: produto._id,
+        name: produto.name,
+        quantidade_vendida: info ? info.quantidade : 0,
+        receita_total: info ? info.receita : 0
+      };
+    });
+
+    // Ordena do maior para o menor em quantidade vendida
+    resultado.sort((a, b) => b.quantidade_vendida - a.quantidade_vendida);
+
+    res.json({ produtos: resultado });
+  } catch (error) {
+    console.error('Erro ao gerar relatório de produtos mais vendidos:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
 export default router;

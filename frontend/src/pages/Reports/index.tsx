@@ -1,3 +1,4 @@
+import type { ProdutoMaisVendido } from '../../services/relatoriosService';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
@@ -98,7 +99,36 @@ type ChartType = 'line' | 'bar' | 'pie';
 const Reports = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-
+  const [produtosMaisVendidos, setProdutosMaisVendidos] = useState<ProdutoMaisVendido[]>([]);
+  const [loadingProdutos, setLoadingProdutos] = useState(false);
+  const [showProdutosMaisVendidos, setShowProdutosMaisVendidos] = useState(false);
+  const carregarProdutosMaisVendidos = async () => {
+    setLoadingProdutos(true);
+    try {
+      const { produtos } = await relatoriosService.obterRelatorioProdutosMaisVendidos();
+      setProdutosMaisVendidos(produtos);
+    } catch (error) {
+      setProdutosMaisVendidos([]);
+      setError('Erro ao carregar produtos mais vendidos');
+    } finally {
+      setLoadingProdutos(false);
+    }
+  };
+  const exportarProdutosMaisVendidosCSV = () => {
+    if (!produtosMaisVendidos.length) return;
+    const csvRows = [
+      'Produto,Quantidade Vendida,Receita Total',
+      ...produtosMaisVendidos.map(p => `${p.name},${p.quantidade_vendida},${formatCurrency(p.receita_total)}`)
+    ];
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `produtos-mais-vendidos-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   // Estados para dados do backend - INTEGRAÇÃO ATIVA
   const [vendas, setVendas] = useState<[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -682,7 +712,65 @@ const Reports = () => {
                 >
                   PDF
                 </Button>
+                <Button
+                  variant="contained"
+                  color={showProdutosMaisVendidos ? 'secondary' : 'primary'}
+                  startIcon={<BarChartIcon />}
+                  onClick={async () => {
+                    if (!showProdutosMaisVendidos) await carregarProdutosMaisVendidos();
+                    setShowProdutosMaisVendidos(v => !v);
+                  }}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                  size="medium"
+                >
+                  Produtos Mais Vendidos
+                </Button>
               </Box>
+                  {/* Tabela de Produtos Mais Vendidos */}
+                  {showProdutosMaisVendidos && (
+                    <Paper elevation={2} sx={{ borderRadius: 3, marginTop: 4, marginBottom: 4 }}>
+                      <Box sx={{ padding: { xs: 2, md: 3 }, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
+                          Produtos Mais Vendidos (Todos)
+                        </Typography>
+                        <Button
+                          variant="outlined"
+                          startIcon={<FileDownloadIcon />}
+                          onClick={exportarProdutosMaisVendidosCSV}
+                          disabled={produtosMaisVendidos.length === 0}
+                          size="small"
+                        >
+                          Exportar CSV
+                        </Button>
+                      </Box>
+                      {loadingProdutos ? (
+                        <Box display="flex" justifyContent="center" alignItems="center" minHeight={120}>
+                          <CircularProgress />
+                        </Box>
+                      ) : (
+                        <TableContainer>
+                          <Table>
+                            <TableHead>
+                              <TableRow sx={{ backgroundColor: 'primary.50' }}>
+                                <TableCell><strong>Produto</strong></TableCell>
+                                <TableCell align="center"><strong>Quantidade Vendida</strong></TableCell>
+                                <TableCell align="center"><strong>Receita Total</strong></TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {produtosMaisVendidos.map((produto) => (
+                                <TableRow key={produto.produto_id} hover>
+                                  <TableCell>{produto.name}</TableCell>
+                                  <TableCell align="center">{produto.quantidade_vendida}</TableCell>
+                                  <TableCell align="center">{formatCurrency(produto.receita_total)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </Paper>
+                  )}
             </Box>
           </Box>
 

@@ -1,5 +1,16 @@
 import api from '../lib/api';
 
+export interface ProdutoMaisVendido {
+  produto_id: string;
+  name: string;
+  quantidade_vendida: number;
+  receita_total: number;
+}
+
+export interface RelatorioProdutosMaisVendidos {
+  produtos: ProdutoMaisVendido[];
+}
+
 export interface RelatorioPeriodo {
   periodo?: string;
   data_inicio?: string;
@@ -62,6 +73,15 @@ export interface FiltrosVenda {
 }
 
 class RelatoriosService {
+    async obterRelatorioProdutosMaisVendidos(): Promise<RelatorioProdutosMaisVendidos> {
+      try {
+        const response = await api.get('/relatorios/produtos-mais-vendidos');
+        return response.data;
+      } catch (error) {
+        console.error('Erro ao obter relatório de produtos mais vendidos:', error);
+        throw error;
+      }
+    }
   async obterRelatorioVendas(params: RelatorioPeriodo): Promise<RelatorioVendas> {
     try {
       const response = await api.get('/relatorios/vendas', { params });
