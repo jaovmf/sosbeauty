@@ -96,15 +96,15 @@ const Stock = () => {
   // KPIs calculados
   const kpis = useMemo(() => {
     const total = produtos.length;
-    const totalValue = produtos.reduce((sum, p) => sum + (p.price * p.stock), 0);
+    const totalSaleValue = produtos.reduce((sum, p) => sum + (p.price * p.stock), 0);
+    const totalCostValue = produtos.reduce((sum, p) => sum + ((p.cost ?? 0) * p.stock), 0);
     const lowStock = produtos.filter(p => p.stock > 0 && p.stock <= 10).length;
     const outOfStock = produtos.filter(p => p.stock === 0).length;
     const inPromo = produtos.filter(p =>
       p.promotional_price && p.promotional_price > 0 && p.promotional_price < p.price
     ).length;
-    const avgStockValue = total > 0 ? totalValue / total : 0;
 
-    return { total, totalValue, lowStock, outOfStock, inPromo, avgStockValue };
+    return { total, totalSaleValue, totalCostValue, lowStock, outOfStock, inPromo };
   }, [produtos]);
 
   const handleProductClick = (product: Produto) => {
@@ -247,7 +247,7 @@ const Stock = () => {
 
           {/* KPIs */}
           <Grid container spacing={{ xs: 1.25, md: 3 }} mb={3}>
-            <Grid item xs={6} sm={6} md={2.4}>
+            <Grid item xs={6} sm={6} md={2}>
               <Card elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
                 <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
                   <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
@@ -266,26 +266,45 @@ const Stock = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={6} sm={6} md={2.4}>
+            <Grid item xs={6} sm={6} md={2}>
               <Card elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
                 <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
                   <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
                     <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                      Valor Total
+                      Valor Venda
                     </Typography>
-                    <AttachMoneyIcon sx={{ fontSize: { xs: 20, md: 24 }, color: 'success.main', opacity: 0.7 }} />
+                    <TrendingUpIcon sx={{ fontSize: { xs: 20, md: 24 }, color: 'success.main', opacity: 0.7 }} />
                   </Box>
                   <Typography variant="h5" fontWeight="bold" color="success.main" sx={{ fontSize: { xs: '1.1rem', md: '1.5rem' } }}>
-                    {formatCurrency(kpis.totalValue)}
+                    {formatCurrency(kpis.totalSaleValue)}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    em estoque
+                    pelo preco de venda
                   </Typography>
                 </CardContent>
               </Card>
             </Grid>
 
-            <Grid item xs={6} sm={6} md={2.4}>
+            <Grid item xs={6} sm={6} md={2}>
+              <Card elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
+                <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                      Valor Custo
+                    </Typography>
+                    <AttachMoneyIcon sx={{ fontSize: { xs: 20, md: 24 }, color: 'info.main', opacity: 0.7 }} />
+                  </Box>
+                  <Typography variant="h5" fontWeight="bold" color="info.main" sx={{ fontSize: { xs: '1.1rem', md: '1.5rem' } }}>
+                    {formatCurrency(kpis.totalCostValue)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    pelo preco de custo
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={6} sm={6} md={2}>
               <Card
                 elevation={0}
                 sx={{
@@ -312,7 +331,7 @@ const Stock = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={6} sm={6} md={2.4}>
+            <Grid item xs={6} sm={6} md={2}>
               <Card
                 elevation={0}
                 sx={{
@@ -339,7 +358,7 @@ const Stock = () => {
               </Card>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={2.4}>
+            <Grid item xs={6} sm={6} md={2}>
               <Card elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
                 <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
                   <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
