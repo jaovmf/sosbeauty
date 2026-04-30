@@ -3,6 +3,7 @@ import Produto from '../models/Produto';
 import { uploadProduto } from '../middleware/upload';
 import { authenticate } from '../middleware/auth';
 import cloudinary from '../config/cloudinary';
+import { createAuditLog } from '../utils/auditLogger';
 
 const router = Router();
 
@@ -219,6 +220,30 @@ router.put('/:id', uploadProduto.single('image'), async (req: Request, res: Resp
     };
 
     await Produto.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+
+    const changedPrice = Number(produtoAtual.price) !== Number(updateData.price);
+    const changedStock = Number(produtoAtual.stock) !== Number(updateData.stock);
+    const changedPromo = Number(produtoAtual.promotional_price || 0) !== Number(updateData.promotional_price || 0);
+
+    if (changedPrice || changedStock || changedPromo) {
+      await createAuditLog({
+        req,
+        entityType: 'produto',
+        entityId: String(id),
+        action: 'produto_atualizado',
+        changes: {
+          price: changedPrice
+            ? { from: Number(produtoAtual.price), to: Number(updateData.price) }
+            : undefined,
+          stock: changedStock
+            ? { from: Number(produtoAtual.stock), to: Number(updateData.stock) }
+            : undefined,
+          promotional_price: changedPromo
+            ? { from: Number(produtoAtual.promotional_price || 0), to: Number(updateData.promotional_price || 0) }
+            : undefined,
+        },
+      });
+    }
 
     res.json({ message: 'Produto atualizado com sucesso', image: newImagePath });
   } catch (error) {

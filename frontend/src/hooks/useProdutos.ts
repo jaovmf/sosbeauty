@@ -21,9 +21,11 @@ export const useProdutos = (filtroInicial?: ConsultaEstoque): UseProdutosReturn 
   const [error, setError] = useState<string | null>(null);
 
   // Função para buscar produtos
-  const fetchProdutos = useCallback(async (filtros?: ConsultaEstoque) => {
+  const fetchProdutos = useCallback(async (filtros?: ConsultaEstoque, showLoading: boolean = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
 
       if (filtros) {
@@ -37,7 +39,9 @@ export const useProdutos = (filtroInicial?: ConsultaEstoque): UseProdutosReturn 
       setError(err.response?.data?.error || 'Erro ao carregar produtos');
       console.error('Erro ao buscar produtos:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -51,52 +55,52 @@ export const useProdutos = (filtroInicial?: ConsultaEstoque): UseProdutosReturn 
     try {
       setError(null);
       await produtosService.criar(produto);
-      await refetch(); // Recarregar lista
+      await fetchProdutos(filtroInicial, false); // Atualização silenciosa para não resetar a tela
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Erro ao criar produto';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  }, [refetch]);
+  }, [fetchProdutos, filtroInicial]);
 
   // Atualizar produto
   const atualizarProduto = useCallback(async (id: number, produto: Partial<Produto>) => {
     try {
       setError(null);
       await produtosService.atualizar(id, produto);
-      await refetch(); // Recarregar lista
+      await fetchProdutos(filtroInicial, false); // Atualização silenciosa para não resetar a tela
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Erro ao atualizar produto';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  }, [refetch]);
+  }, [fetchProdutos, filtroInicial]);
 
   // Atualizar produto com imagem
   const atualizarProdutoComImagem = useCallback(async (id: number, formData: FormData) => {
     try {
       setError(null);
       await produtosService.atualizarComImagem(id, formData);
-      await refetch(); // Recarregar lista
+      await fetchProdutos(filtroInicial, false); // Atualização silenciosa para não resetar a tela
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Erro ao atualizar produto';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  }, [refetch]);
+  }, [fetchProdutos, filtroInicial]);
 
   // Deletar produto
   const deletarProduto = useCallback(async (id: number) => {
     try {
       setError(null);
       await produtosService.deletar(id);
-      await refetch(); // Recarregar lista
+      await fetchProdutos(filtroInicial, false); // Atualização silenciosa para não resetar a tela
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Erro ao deletar produto';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  }, [refetch]);
+  }, [fetchProdutos, filtroInicial]);
 
   // Buscar produto específico
   const buscarProduto = useCallback(async (id: number): Promise<Produto | null> => {

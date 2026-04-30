@@ -34,7 +34,8 @@ import {
   ManageAccounts as ManageAccountsIcon,
   Settings as SettingsIcon,
   Business as BusinessIcon,
-  LocalShipping as LocalShippingIcon
+  LocalShipping as LocalShippingIcon,
+  HistoryEdu as HistoryEduIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -62,6 +63,7 @@ const secondaryMenuItems: MenuItemType[] = [
   { text: 'Cadastrar Cliente', icon: <PersonAddIcon />, path: '/clients' },
   { text: 'Lista de Clientes', icon: <PeopleIcon />, path: '/clients-list' },
   { text: 'CRM Simples', icon: <ManageAccountsIcon />, path: '/crm' },
+  { text: 'Auditoria', icon: <HistoryEduIcon />, path: '/audit' },
   { text: 'Fornecedores', icon: <BusinessIcon />, path: '/fornecedores' },
   { text: 'Entrada de Mercadorias', icon: <LocalShippingIcon />, path: '/entradas' },
 ];
@@ -75,6 +77,7 @@ const Sidebar = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const isActive = (path: string) => location.pathname === path;
+  const canAccessAudit = ['super_admin', 'admin', 'gerente'].includes(usuario?.role || '');
 
   const getItemStyle = (active: boolean, highlight?: boolean) => ({
     minHeight: 48,
@@ -82,16 +85,16 @@ const Sidebar = () => {
     px: 2,
     borderRadius: 2,
     color: active
-      ? theme.palette.secondary.main
+      ? theme.palette.primary.main
       : highlight
-      ? theme.palette.secondary.main
+      ? theme.palette.primary.main
       : theme.palette.text.primary,
     backgroundColor: active
-      ? alpha(theme.palette.secondary.light, 0.25)
+      ? alpha(theme.palette.primary.main, 0.1)
       : 'transparent',
     '&:hover': {
       backgroundColor: active
-        ? alpha(theme.palette.secondary.light, 0.35)
+        ? alpha(theme.palette.primary.main, 0.16)
         : alpha(theme.palette.action.hover, 0.08),
     },
   });
@@ -113,7 +116,7 @@ const Sidebar = () => {
       <Toolbar
         sx={{
           justifyContent: open ? 'space-between' : 'center',
-          backgroundColor: alpha(theme.palette.primary.main, 0.05),
+          backgroundColor: alpha(theme.palette.primary.main, 0.08),
         }}
       >
         {open && (
@@ -150,7 +153,7 @@ const Sidebar = () => {
                     minWidth: 0,
                     mr: open ? 2 : 'auto',
                     color: active || item.highlight
-                      ? theme.palette.secondary.main
+                      ? theme.palette.primary.main
                       : theme.palette.text.secondary,
                   }}
                 >
@@ -181,7 +184,9 @@ const Sidebar = () => {
             </Typography>
           </ListItem>
         )}
-        {secondaryMenuItems.map((item) => {
+        {secondaryMenuItems
+          .filter((item) => item.path !== '/audit' || canAccessAudit)
+          .map((item) => {
           const active = isActive(item.path);
           return (
             <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
@@ -194,7 +199,7 @@ const Sidebar = () => {
                     minWidth: 0,
                     mr: open ? 2 : 'auto',
                     color: active
-                      ? theme.palette.secondary.main
+                      ? theme.palette.primary.main
                       : theme.palette.text.secondary,
                   }}
                 >

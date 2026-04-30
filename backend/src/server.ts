@@ -16,6 +16,7 @@ import vendasRoutes from './routes/vendas';
 import relatoriosRoutes from './routes/relatorios';
 import fornecedoresRoutes from './routes/fornecedores';
 import entradasRoutes from './routes/entradas';
+import auditoriaRoutes from './routes/auditoria';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3003;
@@ -69,6 +70,7 @@ app.use('/api/vendas', vendasRoutes);
 app.use('/api/relatorios', relatoriosRoutes);
 app.use('/api/fornecedores', fornecedoresRoutes);
 app.use('/api/entradas', entradasRoutes);
+app.use('/api/auditoria', auditoriaRoutes);
 
 app.get('/api/health', (req, res) => {
   const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';

@@ -12,6 +12,7 @@ export interface IUsuario extends Document {
   avatar?: string;
   phone?: string;
   lastLogin?: Date;
+  uiPreferences?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
   roleName: string; // Virtual field
@@ -59,6 +60,10 @@ const UsuarioSchema: Schema = new Schema(
     },
     lastLogin: {
       type: Date
+    },
+    uiPreferences: {
+      type: Schema.Types.Mixed,
+      default: {}
     }
   },
   {

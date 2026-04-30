@@ -9,7 +9,6 @@ import {
   TextField,
   Box,
   Stack,
-  Alert,
   CircularProgress,
   Divider,
   Grid,
@@ -28,6 +27,7 @@ import { useClientes } from '../../hooks/useClientes';
 import { getApiUrl, getCatalogWhatsAppNumber } from '../../lib/apiUrl';
 import { formatCurrency } from '../../utils/formatCurrency';
 import type { Cliente } from '../../types/api';
+import OperationalNotice from '../Management/OperationalNotice';
 
 interface CheckoutModalProps {
   open: boolean;
@@ -474,9 +474,12 @@ ${itemsList}
             </Grid>
 
             {error && (
-              <Alert severity="error" sx={{ mt: 2 }}>
-                {error}
-              </Alert>
+              <OperationalNotice
+                severity="error"
+                title="Erro no cadastro"
+                message={error}
+                mb={0}
+              />
             )}
 
             <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
@@ -501,9 +504,12 @@ ${itemsList}
 
         {cliente && (
           <Box sx={{ py: 2 }}>
-            <Alert severity="success" sx={{ mb: 3 }}>
-              Cliente encontrado! Confira os dados abaixo:
-            </Alert>
+            <OperationalNotice
+              severity="success"
+              title="Cliente encontrado"
+              message="Confira os dados abaixo antes de enviar o pedido."
+              mb={3}
+            />
 
             <Paper sx={{ p: 2, mb: 3, backgroundColor: 'grey.50' }}>
               <Typography variant="h6" gutterBottom>{cliente.name}</Typography>
@@ -561,9 +567,11 @@ ${itemsList}
               </Typography>
             </Box>
 
-            <Alert severity="info" sx={{ mt: 2, fontSize: '0.875rem' }}>
-              O valor do frete será calculado e informado após a confirmação do pedido.
-            </Alert>
+            <OperationalNotice
+              severity="info"
+              message="O valor do frete será calculado e informado após a confirmação do pedido."
+              mb={0}
+            />
 
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" color="text.secondary">

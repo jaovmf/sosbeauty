@@ -39,7 +39,8 @@ import {
   WhatsApp as WhatsAppIcon,
   FilterList as FilterIcon,
   Edit as EditIcon,
-  Cancel as CancelIcon
+  Cancel as CancelIcon,
+  HistoryEdu as HistoryEduIcon
 } from '@mui/icons-material';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { useNavigate } from 'react-router-dom';
@@ -132,6 +133,10 @@ const SalesManagement = () => {
 
       setSelectedVenda(venda);
       setDetailsOpen(true);
+      // Preencher valor do frete ao abrir detalhes
+      if (venda.shipping_value !== undefined && venda.shipping_value !== null) {
+        setShippingValue(String(venda.shipping_value));
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Erro ao carregar detalhes da venda');
     }
@@ -317,6 +322,149 @@ const SalesManagement = () => {
                         {formatCurrency(venda.total)}
                       </Typography>
                     </Box>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                      <Typography variant="caption" color="text.secondary">
+                        Frete
+                      </Typography>
+                      <Typography variant="subtitle1" fontWeight={700} color="info.main">
+                        {venda.shipping_value !== undefined ? formatCurrency(venda.shipping_value) : '-'}
+                      </Typography>
+                    </Box>
+                  </Paper>
+                ))
+              )}
+            </Stack>
+          ) : (
+            <Paper>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Cliente</TableCell>
+                      <TableCell>Total</TableCell>
+                      <TableCell>Frete</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Data</TableCell>
+                      <TableCell align="center">Ações</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">
+                          <CircularProgress />
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredVendas.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">
+                          <Typography variant="body2" color="textSecondary">
+                            Nenhuma venda encontrada
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredVendas.map((venda) => (
+                        <TableRow key={venda.id} hover>
+                          <TableCell>{venda.cliente_nome}</TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="bold" color="primary">
+                              {formatCurrency(venda.total)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="bold" color="info.main">
+                              {venda.shipping_value !== undefined ? formatCurrency(venda.shipping_value) : '-'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{getStatusChip(venda.status)}</TableCell>
+                          <TableCell>
+                            {new Date(venda.created_at).toLocaleDateString('pt-BR')} às{' '}
+                            {new Date(venda.created_at).toLocaleTimeString('pt-BR')}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Stack direction="row" spacing={1} justifyContent="center">
+                              <Tooltip title="Ver detalhes">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => loadVendaDetails(venda.id)}
+                                >
+                                  <ViewIcon />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Ver auditoria da venda">
+                                <IconButton
+                                  size="small"
+                                  color="info"
+                                  onClick={() => navigate(`/audit?entityType=venda&entityId=${venda.id}`)}
+                                >
+                                  <HistoryEduIcon />
+                                </IconButton>
+                              </Tooltip>
+                              {venda.status === 'pendente' && (
+                                <Tooltip title="Editar pré-venda">
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => navigate(`/sales?preVendaId=${venda.id}`)}
+                                  >
+                                    <EditIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {venda.status === 'pendente' && (
+                                <Tooltip title="Enviar orçamento no WhatsApp">
+                                  <IconButton
+                                    size="small"
+                                    sx={{ color: '#25D366' }}
+                                    onClick={() => handleSendWhatsApp(venda, 'pre_venda')}
+                                  >
+                                    <WhatsAppIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {venda.status === 'pendente' && (
+                                <Tooltip title="Confirmar venda">
+                                  <IconButton
+                                    size="small"
+                                    color="success"
+                                    onClick={() => {
+                                      setSelectedVenda(venda);
+                                      setConfirmOpen(true);
+                                      // Preencher valor do frete ao abrir confirmação
+                                      if (venda.shipping_value !== undefined && venda.shipping_value !== null) {
+                                        setShippingValue(String(venda.shipping_value));
+                                      }
+                                    }}
+                                  >
+                                    <CheckIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                              {venda.status === 'pendente' && (
+                                <Tooltip title="Cancelar pré-venda">
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => {
+                                      setVendaToCancel(venda);
+                                      setCancelOpen(true);
+                                    }}
+                                  >
+                                    <CancelIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          )}
 
                     <Box
                       sx={{
@@ -335,6 +483,17 @@ const SalesManagement = () => {
                         sx={{ minHeight: 38 }}
                       >
                         Detalhes
+                      </Button>
+
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<HistoryEduIcon />}
+                        onClick={() => navigate(`/audit?entityType=venda&entityId=${venda.id}`)}
+                        fullWidth
+                        sx={{ minHeight: 38 }}
+                      >
+                        Auditoria
                       </Button>
 
                       {venda.status === 'pendente' && (
@@ -451,6 +610,15 @@ const SalesManagement = () => {
                                   onClick={() => loadVendaDetails(venda.id)}
                                 >
                                   <ViewIcon />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Ver auditoria da venda">
+                                <IconButton
+                                  size="small"
+                                  color="info"
+                                  onClick={() => navigate(`/audit?entityType=venda&entityId=${venda.id}`)}
+                                >
+                                  <HistoryEduIcon />
                                 </IconButton>
                               </Tooltip>
                               {venda.status === 'pendente' && (

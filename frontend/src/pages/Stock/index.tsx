@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import {
   Box,
   Typography,
@@ -15,7 +15,6 @@ import {
   TextField,
   InputAdornment,
   CircularProgress,
-  Alert,
   Chip,
   MenuItem,
   FormControl,
@@ -30,7 +29,11 @@ import {
   useMediaQuery,
   ToggleButtonGroup,
   ToggleButton,
-  Tooltip
+  Tooltip,
+  Checkbox,
+  TableSortLabel,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -48,14 +51,48 @@ import {
   LocalOffer as LocalOfferIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
+import { HistoryEdu as HistoryEduIcon } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import ProductModal from './ProductModal';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { useProdutos } from '../../hooks/useProdutos';
 import type { Produto } from '../../types/api';
+import PageHeader from '../../components/Layout/PageHeader';
+import SectionBlock from '../../components/Management/SectionBlock';
+import KpiMetricCard from '../../components/Management/KpiMetricCard';
+import OperationalNotice from '../../components/Management/OperationalNotice';
+import EmptyStatePanel from '../../components/Management/EmptyStatePanel';
+import userPreferencesService from '../../services/userPreferences';
+import toast from 'react-hot-toast';
+
+const STOCK_LAST_FILTERS_KEY = 'sosbeauty:stock:lastFilters';
+
+interface StockFilterSnapshot {
+  searchTerm: string;
+  categoriaFiltro: string;
+  marcaFiltro: string;
+  stockFilter: 'all' | 'low' | 'out' | 'ok';
+  promoFilter: boolean;
+  sortBy: 'name' | 'brand' | 'category' | 'price' | 'stock';
+  sortDirection: 'asc' | 'desc';
+}
+
+interface StockLayoutPrefs {
+  rowsPerPage: number;
+  denseRows: boolean;
+  visibleColumns: {
+    brand: boolean;
+    category: boolean;
+    price: boolean;
+    stock: boolean;
+    status: boolean;
+  };
+}
 
 const Stock = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const navigate = useNavigate();
   const {
     produtos,
     loading,
@@ -71,13 +108,111 @@ const Stock = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [denseRows, setDenseRows] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoriaFiltro, setCategoriaFiltro] = useState('');
   const [marcaFiltro, setMarcaFiltro] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out' | 'ok'>('all');
   const [promoFilter, setPromoFilter] = useState(false);
+  const [sortBy, setSortBy] = useState<'name' | 'brand' | 'category' | 'price' | 'stock'>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [categorias, setCategorias] = useState<string[]>([]);
   const [marcas, setMarcas] = useState<string[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<StockLayoutPrefs['visibleColumns']>({
+    brand: true,
+    category: true,
+    price: true,
+    stock: true,
+    status: true,
+  });
+  const deferredSearchInput = useDeferredValue(searchInput);
+
+  const getCurrentFilters = (): StockFilterSnapshot => ({
+    searchTerm,
+    categoriaFiltro,
+    marcaFiltro,
+    stockFilter,
+    promoFilter,
+    sortBy,
+    sortDirection,
+  });
+
+  const getCurrentLayout = (): StockLayoutPrefs => ({
+    rowsPerPage,
+    denseRows,
+    visibleColumns,
+  });
+
+  const applyFilters = (filters: StockFilterSnapshot) => {
+    setSearchTerm(filters.searchTerm || '');
+    setCategoriaFiltro(filters.categoriaFiltro || '');
+    setMarcaFiltro(filters.marcaFiltro || '');
+    setStockFilter(filters.stockFilter || 'all');
+    setPromoFilter(!!filters.promoFilter);
+    setSortBy(filters.sortBy || 'name');
+    setSortDirection(filters.sortDirection || 'asc');
+    setSearchInput(filters.searchTerm || '');
+    setPage(0);
+  };
+
+  useEffect(() => {
+    const loadInitialPrefs = async () => {
+      try {
+        const lastRaw = localStorage.getItem(STOCK_LAST_FILTERS_KEY);
+        if (lastRaw) {
+          const parsed = JSON.parse(lastRaw) as StockFilterSnapshot;
+          applyFilters(parsed);
+        }
+
+        const serverPrefs = await userPreferencesService.getPreferences().catch(() => ({}));
+
+        const serverStockPrefs = serverPrefs?.stock || {};
+
+        if (serverStockPrefs.layout) {
+          const layout = serverStockPrefs.layout as StockLayoutPrefs;
+          setRowsPerPage(layout.rowsPerPage || 10);
+          setDenseRows(!!layout.denseRows);
+          if (layout.visibleColumns) {
+            setVisibleColumns({
+              brand: layout.visibleColumns.brand !== false,
+              category: layout.visibleColumns.category !== false,
+              price: layout.visibleColumns.price !== false,
+              stock: layout.visibleColumns.stock !== false,
+              status: layout.visibleColumns.status !== false,
+            });
+          }
+        }
+
+      } catch {
+        // Sem fallback adicional necessário
+      }
+    };
+
+    loadInitialPrefs();
+  }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setSearchTerm(deferredSearchInput);
+      setPage(0);
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [deferredSearchInput]);
+
+  useEffect(() => {
+    localStorage.setItem(STOCK_LAST_FILTERS_KEY, JSON.stringify(getCurrentFilters()));
+  }, [searchTerm, categoriaFiltro, marcaFiltro, stockFilter, promoFilter, sortBy, sortDirection]);
+
+  useEffect(() => {
+    userPreferencesService.patchPreferences({
+      stock: {
+        layout: getCurrentLayout(),
+      },
+    }).catch(() => {});
+  }, [rowsPerPage, denseRows, visibleColumns]);
 
   useEffect(() => {
     if (produtos.length > 0) {
@@ -127,8 +262,10 @@ const Stock = () => {
         }
       }
       handleCloseModal();
+      toast.success('Produto atualizado com sucesso.');
     } catch (err) {
       console.error('Erro ao salvar produto:', err);
+      toast.error('Não foi possível salvar o produto.');
     }
   };
 
@@ -136,9 +273,65 @@ const Stock = () => {
     if (window.confirm('Tem certeza que deseja excluir este produto?')) {
       try {
         await deletarProduto(productId);
+        setSelectedProductIds((prev) => prev.filter((id) => id !== productId));
+        toast.success('Produto removido com sucesso.');
       } catch (err) {
         console.error('Erro ao excluir produto:', err);
+        toast.error('Não foi possível remover o produto.');
       }
+    }
+  };
+
+  const handleSort = (column: 'name' | 'brand' | 'category' | 'price' | 'stock') => {
+    if (sortBy === column) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+
+    setSortBy(column);
+    setSortDirection('asc');
+  };
+
+  const toggleProductSelection = (productId: number) => {
+    setSelectedProductIds((prev) => (
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId]
+    ));
+  };
+
+  const togglePageSelection = () => {
+    const pageIds = paginatedProducts.map((product) => product.id);
+    const allSelected = pageIds.every((id) => selectedProductIds.includes(id));
+
+    if (allSelected) {
+      setSelectedProductIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+      return;
+    }
+
+    setSelectedProductIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProductIds.length === 0) return;
+    if (!window.confirm(`Deseja remover ${selectedProductIds.length} produto(s)?`)) return;
+
+    let successCount = 0;
+    for (const id of selectedProductIds) {
+      try {
+        await deletarProduto(id);
+        successCount += 1;
+      } catch {
+        // Mantém fluxo mesmo com falhas pontuais
+      }
+    }
+
+    setSelectedProductIds([]);
+
+    if (successCount > 0) {
+      toast.success(`${successCount} produto(s) removido(s).`);
+    } else {
+      toast.error('Não foi possível remover os produtos selecionados.');
     }
   };
 
@@ -152,7 +345,7 @@ const Stock = () => {
   };
 
   const filteredProducts = useMemo(() => {
-    return produtos.filter(product => {
+    const filtered = produtos.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -171,14 +364,36 @@ const Stock = () => {
 
       return matchesSearch && matchesCategoria && matchesMarca && matchesStock && matchesPromo;
     });
-  }, [produtos, searchTerm, categoriaFiltro, marcaFiltro, stockFilter, promoFilter]);
+
+    return filtered.sort((a, b) => {
+      const modifier = sortDirection === 'asc' ? 1 : -1;
+
+      if (sortBy === 'price') {
+        return (a.price - b.price) * modifier;
+      }
+
+      if (sortBy === 'stock') {
+        return (a.stock - b.stock) * modifier;
+      }
+
+      const aValue = String((a as any)[sortBy] || '').toLowerCase();
+      const bValue = String((b as any)[sortBy] || '').toLowerCase();
+
+      return aValue.localeCompare(bValue) * modifier;
+    });
+  }, [produtos, searchTerm, categoriaFiltro, marcaFiltro, stockFilter, promoFilter, sortBy, sortDirection]);
 
   const paginatedProducts = filteredProducts.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
 
+  useEffect(() => {
+    setSelectedProductIds((prev) => prev.filter((id) => filteredProducts.some((product) => product.id === id)));
+  }, [filteredProducts]);
+
   const limparFiltros = () => {
+    setSearchInput('');
     setSearchTerm('');
     setCategoriaFiltro('');
     setMarcaFiltro('');
@@ -212,181 +427,108 @@ const Stock = () => {
     <>
       <Container maxWidth="xl" sx={{ pb: { xs: 10, md: 3 }, px: { xs: 1, sm: 2, md: 3 } }}>
         <Box>
-          {/* Header */}
-          <Box display="flex" alignItems="center" justifyContent="space-between" mb={3} flexWrap="wrap" gap={2}>
-            <Box display="flex" alignItems="center" gap={1}>
-              <InventoryIcon sx={{ fontSize: { xs: 28, md: 32 }, color: 'primary.main' }} />
-              <Box>
-                <Typography variant="h5" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-                  Estoque
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Gestão de produtos e inventário
-                </Typography>
-              </Box>
-            </Box>
-            <Tooltip title="Atualizar">
-              <IconButton
-                onClick={refetch}
-                sx={{
-                  bgcolor: alpha(theme.palette.primary.main, 0.1),
-                  '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
-                }}
-              >
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
+          <PageHeader
+            title="Estoque"
+            subtitle="Gestão de produtos e inventário"
+            icon={<InventoryIcon fontSize="small" />}
+            actions={
+              <Tooltip title="Atualizar estoque">
+                <IconButton
+                  onClick={refetch}
+                  sx={{
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.18) }
+                  }}
+                >
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+            }
+          />
 
           {/* Erros */}
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
+            <OperationalNotice
+              severity="error"
+              title="Falha ao carregar estoque"
+              message={error}
+            />
           )}
 
           {/* KPIs */}
           <Grid container spacing={{ xs: 1.25, md: 3 }} mb={3}>
             <Grid item xs={6} sm={6} md={2}>
-              <Card elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
-                <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
-                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                      Total Produtos
-                    </Typography>
-                    <InventoryIcon sx={{ fontSize: { xs: 20, md: 24 }, color: 'primary.main', opacity: 0.7 }} />
-                  </Box>
-                  <Typography variant="h5" fontWeight="bold" sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-                    {kpis.total}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    cadastrados
-                  </Typography>
-                </CardContent>
-              </Card>
+              <KpiMetricCard
+                title="Total Produtos"
+                value={kpis.total}
+                subtitle="cadastrados"
+                icon={<InventoryIcon sx={{ fontSize: { xs: 20, md: 24 } }} />}
+                color={theme.palette.primary.main}
+              />
             </Grid>
 
             <Grid item xs={6} sm={6} md={2}>
-              <Card elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
-                <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
-                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                      Valor Venda
-                    </Typography>
-                    <TrendingUpIcon sx={{ fontSize: { xs: 20, md: 24 }, color: 'success.main', opacity: 0.7 }} />
-                  </Box>
-                  <Typography variant="h5" fontWeight="bold" color="success.main" sx={{ fontSize: { xs: '1.1rem', md: '1.5rem' } }}>
-                    {formatCurrency(kpis.totalSaleValue)}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    pelo preco de venda
-                  </Typography>
-                </CardContent>
-              </Card>
+              <KpiMetricCard
+                title="Valor Venda"
+                value={formatCurrency(kpis.totalSaleValue)}
+                subtitle="pelo preco de venda"
+                icon={<TrendingUpIcon sx={{ fontSize: { xs: 20, md: 24 } }} />}
+                color={theme.palette.success.main}
+              />
             </Grid>
 
             <Grid item xs={6} sm={6} md={2}>
-              <Card elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
-                <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
-                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                      Valor Custo
-                    </Typography>
-                    <AttachMoneyIcon sx={{ fontSize: { xs: 20, md: 24 }, color: 'info.main', opacity: 0.7 }} />
-                  </Box>
-                  <Typography variant="h5" fontWeight="bold" color="info.main" sx={{ fontSize: { xs: '1.1rem', md: '1.5rem' } }}>
-                    {formatCurrency(kpis.totalCostValue)}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    pelo preco de custo
-                  </Typography>
-                </CardContent>
-              </Card>
+              <KpiMetricCard
+                title="Valor Custo"
+                value={formatCurrency(kpis.totalCostValue)}
+                subtitle="pelo preco de custo"
+                icon={<AttachMoneyIcon sx={{ fontSize: { xs: 20, md: 24 } }} />}
+                color={theme.palette.info.main}
+              />
             </Grid>
 
             <Grid item xs={6} sm={6} md={2}>
-              <Card
-                elevation={0}
-                sx={{
-                  border: 1,
-                  borderColor: kpis.lowStock > 0 ? 'warning.main' : 'divider',
-                  borderRadius: 2,
-                  bgcolor: kpis.lowStock > 0 ? alpha(theme.palette.warning.main, 0.05) : 'background.paper'
-                }}
-              >
-                <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
-                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                      Estoque Baixo
-                    </Typography>
-                    <WarningIcon sx={{ fontSize: { xs: 20, md: 24 }, color: 'warning.main', opacity: 0.7 }} />
-                  </Box>
-                  <Typography variant="h5" fontWeight="bold" color="warning.main" sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-                    {kpis.lowStock}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    produtos (≤10 un)
-                  </Typography>
-                </CardContent>
-              </Card>
+              <KpiMetricCard
+                title="Estoque Baixo"
+                value={kpis.lowStock}
+                subtitle="produtos (<=10 un)"
+                icon={<WarningIcon sx={{ fontSize: { xs: 20, md: 24 } }} />}
+                color={theme.palette.warning.main}
+                highlight={kpis.lowStock > 0 ? 'warning' : 'default'}
+              />
             </Grid>
 
             <Grid item xs={6} sm={6} md={2}>
-              <Card
-                elevation={0}
-                sx={{
-                  border: 1,
-                  borderColor: kpis.outOfStock > 0 ? 'error.main' : 'divider',
-                  borderRadius: 2,
-                  bgcolor: kpis.outOfStock > 0 ? alpha(theme.palette.error.main, 0.05) : 'background.paper'
-                }}
-              >
-                <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
-                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                      Esgotados
-                    </Typography>
-                    <TrendingDownIcon sx={{ fontSize: { xs: 20, md: 24 }, color: 'error.main', opacity: 0.7 }} />
-                  </Box>
-                  <Typography variant="h5" fontWeight="bold" color="error.main" sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-                    {kpis.outOfStock}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    sem estoque
-                  </Typography>
-                </CardContent>
-              </Card>
+              <KpiMetricCard
+                title="Esgotados"
+                value={kpis.outOfStock}
+                subtitle="sem estoque"
+                icon={<TrendingDownIcon sx={{ fontSize: { xs: 20, md: 24 } }} />}
+                color={theme.palette.error.main}
+                highlight={kpis.outOfStock > 0 ? 'error' : 'default'}
+              />
             </Grid>
 
             <Grid item xs={6} sm={6} md={2}>
-              <Card elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
-                <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
-                  <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                      Em Promoção
-                    </Typography>
-                    <LocalOfferIcon sx={{ fontSize: { xs: 20, md: 24 }, color: 'info.main', opacity: 0.7 }} />
-                  </Box>
-                  <Typography variant="h5" fontWeight="bold" color="info.main" sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-                    {kpis.inPromo}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    produtos
-                  </Typography>
-                </CardContent>
-              </Card>
+              <KpiMetricCard
+                title="Em Promocao"
+                value={kpis.inPromo}
+                subtitle="produtos"
+                icon={<LocalOfferIcon sx={{ fontSize: { xs: 20, md: 24 } }} />}
+                color={theme.palette.info.main}
+              />
             </Grid>
           </Grid>
 
-          {/* Filtros */}
-          <Card elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2, mb: 3 }}>
-            <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
-              <Box display="flex" alignItems="center" gap={1} mb={2}>
-                <FilterListIcon color="primary" />
-                <Typography variant="subtitle1" fontWeight="bold">
-                  Filtros
-                </Typography>
-              </Box>
+          <SectionBlock
+            title="Filtros"
+            icon={<FilterListIcon color="primary" fontSize="small" />}
+            actions={
+              <Typography variant="body2" color="text.secondary">
+                {filteredProducts.length} itens filtrados
+              </Typography>
+            }
+          >
 
               <Grid container spacing={{ xs: 1.5, md: 2 }}>
                 {/* Busca */}
@@ -395,10 +537,9 @@ const Stock = () => {
                     fullWidth
                     size="small"
                     placeholder={isMobile ? 'Buscar produto...' : 'Buscar produto, marca ou categoria...'}
-                    value={searchTerm}
+                    value={searchInput}
                     onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setPage(0);
+                      setSearchInput(e.target.value);
                     }}
                     InputProps={{
                       startAdornment: (
@@ -504,6 +645,26 @@ const Stock = () => {
 
               {/* Filtros Adicionais */}
               <Box mt={2} display="flex" gap={1} flexWrap="wrap" alignItems="center">
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={denseRows}
+                      onChange={(e) => setDenseRows(e.target.checked)}
+                      size="small"
+                    />
+                  }
+                  label="Tabela compacta"
+                />
+                <Chip
+                  label={visibleColumns.brand ? 'Marca on' : 'Marca off'}
+                  onClick={() => setVisibleColumns((prev) => ({ ...prev, brand: !prev.brand }))}
+                  variant={visibleColumns.brand ? 'filled' : 'outlined'}
+                />
+                <Chip
+                  label={visibleColumns.category ? 'Categoria on' : 'Categoria off'}
+                  onClick={() => setVisibleColumns((prev) => ({ ...prev, category: !prev.category }))}
+                  variant={visibleColumns.category ? 'filled' : 'outlined'}
+                />
                 <Chip
                   label="Em Promoção"
                   color={promoFilter ? 'primary' : 'default'}
@@ -519,105 +680,191 @@ const Stock = () => {
                   color="primary"
                   variant="outlined"
                 />
+                <Button
+                  size="small"
+                  color="error"
+                  variant="outlined"
+                  disabled={selectedProductIds.length === 0}
+                  onClick={handleBulkDelete}
+                >
+                  Excluir selecionados ({selectedProductIds.length})
+                </Button>
               </Box>
-            </CardContent>
-          </Card>
+          </SectionBlock>
 
           {/* Tabela Desktop */}
           <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-            <TableContainer component={Paper} elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ bgcolor: 'grey.50' }}>
-                    <TableCell><strong>Produto</strong></TableCell>
-                    <TableCell><strong>Marca</strong></TableCell>
-                    <TableCell><strong>Categoria</strong></TableCell>
-                    <TableCell align="right"><strong>Preço</strong></TableCell>
-                    <TableCell align="center"><strong>Estoque</strong></TableCell>
-                    <TableCell align="center"><strong>Status</strong></TableCell>
-                    <TableCell align="center"><strong>Ações</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedProducts.map((product) => {
-                    const status = getStockStatus(product.stock);
-                    const hasPromo = product.promotional_price && product.promotional_price > 0 && product.promotional_price < product.price;
-
-                    return (
-                      <TableRow key={product.id} hover>
+            <SectionBlock
+              title="Produtos"
+              actions={
+                <Chip
+                  label={`${filteredProducts.length} itens`}
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                />
+              }
+              showHeaderDivider
+              padding={0}
+            >
+              <TableContainer>
+                <Table size={denseRows ? 'small' : 'medium'}>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: 'grey.50' }}>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          size="small"
+                          checked={paginatedProducts.length > 0 && paginatedProducts.every((product) => selectedProductIds.includes(product.id))}
+                          indeterminate={paginatedProducts.some((product) => selectedProductIds.includes(product.id)) && !paginatedProducts.every((product) => selectedProductIds.includes(product.id))}
+                          onChange={togglePageSelection}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TableSortLabel active={sortBy === 'name'} direction={sortDirection} onClick={() => handleSort('name')}>
+                          <strong>Produto</strong>
+                        </TableSortLabel>
+                      </TableCell>
+                      {visibleColumns.brand && (
                         <TableCell>
-                          <Box>
-                            <Typography variant="body2" fontWeight={500}>
-                              {product.name}
-                            </Typography>
-                            {hasPromo && (
-                              <Chip label="PROMOÇÃO" size="small" color="error" sx={{ mt: 0.5, height: 20 }} />
-                            )}
-                          </Box>
+                          <TableSortLabel active={sortBy === 'brand'} direction={sortDirection} onClick={() => handleSort('brand')}>
+                            <strong>Marca</strong>
+                          </TableSortLabel>
                         </TableCell>
-                        <TableCell>{product.brand || '-'}</TableCell>
+                      )}
+                      {visibleColumns.category && (
                         <TableCell>
-                          <Chip
-                            label={product.category || 'Sem categoria'}
-                            size="small"
-                            variant="outlined"
-                            icon={<CategoryIcon />}
-                          />
+                          <TableSortLabel active={sortBy === 'category'} direction={sortDirection} onClick={() => handleSort('category')}>
+                            <strong>Categoria</strong>
+                          </TableSortLabel>
                         </TableCell>
+                      )}
+                      {visibleColumns.price && (
                         <TableCell align="right">
-                          {hasPromo ? (
-                            <Box>
-                              <Typography variant="caption" sx={{ textDecoration: 'line-through', color: 'text.secondary', display: 'block' }}>
-                                {formatCurrency(product.price)}
-                              </Typography>
-                              <Typography variant="body2" fontWeight="bold" color="error.main">
-                                {formatCurrency(product.promotional_price!)}
-                              </Typography>
-                            </Box>
-                          ) : (
-                            <Typography variant="body2" fontWeight={500}>
-                              {formatCurrency(product.price)}
-                            </Typography>
-                          )}
+                          <TableSortLabel active={sortBy === 'price'} direction={sortDirection} onClick={() => handleSort('price')}>
+                            <strong>Preço</strong>
+                          </TableSortLabel>
                         </TableCell>
+                      )}
+                      {visibleColumns.stock && (
                         <TableCell align="center">
-                          <Typography variant="h6" fontWeight="bold">
-                            {product.stock}
-                          </Typography>
+                          <TableSortLabel active={sortBy === 'stock'} direction={sortDirection} onClick={() => handleSort('stock')}>
+                            <strong>Estoque</strong>
+                          </TableSortLabel>
                         </TableCell>
-                        <TableCell align="center">
-                          <Chip
-                            label={status.label}
-                            color={status.color}
-                            size="small"
-                            icon={status.icon}
+                      )}
+                      {visibleColumns.status && <TableCell align="center"><strong>Status</strong></TableCell>}
+                      <TableCell align="center"><strong>Ações</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {paginatedProducts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} align="center">
+                          <EmptyStatePanel
+                            title="Nenhum produto encontrado"
+                            subtitle="Revise os filtros aplicados para listar itens."
+                            compact
                           />
-                        </TableCell>
-                        <TableCell align="center">
-                          <IconButton size="small" color="primary" onClick={() => handleProductClick(product)}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton size="small" color="error" onClick={() => handleDeleteProduct(product.id)}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-              <TablePagination
-                component="div"
-                count={filteredProducts.length}
-                page={page}
-                onPageChange={handleChangePage}
-                rowsPerPage={rowsPerPage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                rowsPerPageOptions={[5, 10, 25, 50]}
-                labelRowsPerPage="Linhas por página:"
-                labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-              />
-            </TableContainer>
+                    ) : paginatedProducts.map((product) => {
+                      const status = getStockStatus(product.stock);
+                      const hasPromo = product.promotional_price && product.promotional_price > 0 && product.promotional_price < product.price;
+
+                      return (
+                        <TableRow key={product.id} hover selected={selectedProductIds.includes(product.id)}>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              size="small"
+                              checked={selectedProductIds.includes(product.id)}
+                              onChange={() => toggleProductSelection(product.id)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Box>
+                              <Typography variant="body2" fontWeight={500}>
+                                {product.name}
+                              </Typography>
+                              {hasPromo && (
+                                <Chip label="PROMOÇÃO" size="small" color="error" sx={{ mt: 0.5, height: 20 }} />
+                              )}
+                            </Box>
+                          </TableCell>
+                          {visibleColumns.brand && <TableCell>{product.brand || '-'}</TableCell>}
+                          {visibleColumns.category && (
+                            <TableCell>
+                              <Chip
+                                label={product.category || 'Sem categoria'}
+                                size="small"
+                                variant="outlined"
+                                icon={<CategoryIcon />}
+                              />
+                            </TableCell>
+                          )}
+                          {visibleColumns.price && <TableCell align="right">
+                            {hasPromo ? (
+                              <Box>
+                                <Typography variant="caption" sx={{ textDecoration: 'line-through', color: 'text.secondary', display: 'block' }}>
+                                  {formatCurrency(product.price)}
+                                </Typography>
+                                <Typography variant="body2" fontWeight="bold" color="error.main">
+                                  {formatCurrency(product.promotional_price!)}
+                                </Typography>
+                              </Box>
+                            ) : (
+                              <Typography variant="body2" fontWeight={500}>
+                                {formatCurrency(product.price)}
+                              </Typography>
+                            )}
+                          </TableCell>}
+                          {visibleColumns.stock && <TableCell align="center">
+                            <Typography variant="h6" fontWeight="bold">
+                              {product.stock}
+                            </Typography>
+                          </TableCell>}
+                          {visibleColumns.status && <TableCell align="center">
+                            <Chip
+                              label={status.label}
+                              color={status.color}
+                              size="small"
+                              icon={status.icon}
+                            />
+                          </TableCell>}
+                          <TableCell align="center">
+                            <IconButton size="small" color="primary" onClick={() => handleProductClick(product)}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <Tooltip title="Ver auditoria do produto">
+                              <IconButton
+                                size="small"
+                                color="info"
+                                onClick={() => navigate(`/audit?entityType=produto&entityId=${product.id}`)}
+                              >
+                                <HistoryEduIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <IconButton size="small" color="error" onClick={() => handleDeleteProduct(product.id)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+                <TablePagination
+                  component="div"
+                  count={filteredProducts.length}
+                  page={page}
+                  onPageChange={handleChangePage}
+                  rowsPerPage={rowsPerPage}
+                  onRowsPerPageChange={handleChangeRowsPerPage}
+                  rowsPerPageOptions={[5, 10, 25, 50]}
+                  labelRowsPerPage="Linhas por página:"
+                  labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+                />
+              </TableContainer>
+            </SectionBlock>
           </Box>
 
           {/* Cards Mobile */}
@@ -684,6 +931,16 @@ const Stock = () => {
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>
+                          <Tooltip title="Ver auditoria do produto">
+                            <IconButton
+                              size="small"
+                              color="info"
+                              onClick={() => navigate(`/audit?entityType=produto&entityId=${product.id}`)}
+                              sx={{ border: 1, borderColor: 'info.main', borderRadius: 1.5 }}
+                            >
+                              <HistoryEduIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                           <IconButton
                             size="small"
                             color="error"

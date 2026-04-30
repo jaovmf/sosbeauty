@@ -17,6 +17,7 @@ import UsuariosManagement from '../pages/UsuariosManagement';
 import FornecedoresList from '../pages/FornecedoresList';
 import EntradasMercadoria from '../pages/EntradasMercadoria';
 import CRM from '../pages/CRM';
+import AuditTrail from '../pages/AuditTrail';
 
 const AppRoutes = () => {
   return (
@@ -45,6 +46,7 @@ const AppRoutes = () => {
                     <Route path="/fornecedores" element={<FornecedoresList />} />
                     <Route path="/entradas" element={<EntradasMercadoria />} />
                     <Route path="/crm" element={<CRM />} />
+                    <Route path="/audit" element={<AuditTrail />} />
                     <Route path="/usuarios" element={<UsuariosManagement />} />
                   </Routes>
                 </AppLayout>

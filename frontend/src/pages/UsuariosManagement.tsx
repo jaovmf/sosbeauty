@@ -31,6 +31,8 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
+import OperationalNotice from '../components/Management/OperationalNotice';
+import EmptyStatePanel from '../components/Management/EmptyStatePanel';
 
 // Função para obter URL da API (mesma lógica do api.ts)
 const getApiUrl = () => {
@@ -181,9 +183,12 @@ const UsuariosManagement: React.FC = () => {
   if (currentUser?.role !== 'super_admin') {
     return (
       <Box p={3}>
-        <Typography variant="h5" color="error">
-          Acesso negado. Apenas Super Admin pode gerenciar usuários.
-        </Typography>
+        <OperationalNotice
+          severity="error"
+          title="Acesso negado"
+          message="Apenas Super Admin pode gerenciar usuários."
+          mb={0}
+        />
       </Box>
     );
   }
@@ -217,56 +222,68 @@ const UsuariosManagement: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {usuarios.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>
-                  <Box display="flex" alignItems="center" gap={2}>
-                    <Avatar sx={{ bgcolor: 'primary.main' }}>
-                      {user.name.charAt(0).toUpperCase()}
-                    </Avatar>
-                    <Typography fontWeight={500}>{user.name}</Typography>
-                  </Box>
-                </TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>{user.phone || '-'}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={user.roleName}
-                    color={getRoleColor(user.role) as any}
-                    size="small"
+            {usuarios.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center">
+                  <EmptyStatePanel
+                    title="Nenhum usuário cadastrado"
+                    subtitle="Crie um usuário para iniciar a gestão de acesso."
+                    compact
                   />
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={user.ativo ? 'Ativo' : 'Inativo'}
-                    color={user.ativo ? 'success' : 'default'}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  {user.lastLogin
-                    ? new Date(user.lastLogin).toLocaleDateString('pt-BR')
-                    : 'Nunca'}
-                </TableCell>
-                <TableCell align="right">
-                  <IconButton
-                    size="small"
-                    color="primary"
-                    onClick={() => handleOpenDialog(user)}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    color={user.ativo ? 'error' : 'success'}
-                    onClick={() => handleToggleStatus(user)}
-                    disabled={user.id === currentUser?.id}
-                  >
-                    {user.ativo ? <BlockIcon /> : <CheckCircleIcon />}
-                  </IconButton>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              usuarios.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <Avatar sx={{ bgcolor: 'primary.main' }}>
+                        {user.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Typography fontWeight={500}>{user.name}</Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.phone || '-'}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={user.roleName}
+                      color={getRoleColor(user.role) as any}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={user.ativo ? 'Ativo' : 'Inativo'}
+                      color={user.ativo ? 'success' : 'default'}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {user.lastLogin
+                      ? new Date(user.lastLogin).toLocaleDateString('pt-BR')
+                      : 'Nunca'}
+                  </TableCell>
+                  <TableCell align="right">
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => handleOpenDialog(user)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color={user.ativo ? 'error' : 'success'}
+                      onClick={() => handleToggleStatus(user)}
+                      disabled={user.id === currentUser?.id}
+                    >
+                      {user.ativo ? <BlockIcon /> : <CheckCircleIcon />}
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </TableContainer>

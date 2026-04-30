@@ -10,7 +10,6 @@ import {
   Typography,
   Divider,
   Grid,
-  Alert,
   FormControl,
   InputLabel,
   Select,
@@ -25,6 +24,8 @@ import {
 import { formatCurrency } from '../../utils/formatCurrency';
 import api from '../../lib/api';
 import { getImageUrl } from '../../lib/apiUrl';
+import OperationalNotice from '../../components/Management/OperationalNotice';
+import EmptyStatePanel from '../../components/Management/EmptyStatePanel';
 
 interface Fornecedor {
   id: string;
@@ -57,6 +58,7 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const hasNewImageRef = useRef(false);
 
@@ -177,7 +179,7 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
     return sellPrice - cost;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const normalizedPrice = formData.price === '' ? 0 : Number(formData.price);
     const normalizedCost = formData.cost === '' ? 0 : Number(formData.cost);
     const normalizedPromotionalPrice = formData.promotional_price === '' ? 0 : Number(formData.promotional_price);
@@ -244,7 +246,12 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
       hasImage: !!formData.image || !!formData.currentImage
     };
 
-    onSave(updatedProduct);
+    try {
+      setSaving(true);
+      await onSave(updatedProduct);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleClose = () => {
@@ -278,9 +285,12 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
 
       <DialogContent sx={{ pt: 2 }}>
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
+          <OperationalNotice
+            severity="error"
+            title="Falha na edição do produto"
+            message={error}
+            mb={3}
+          />
         )}
 
         <Grid container spacing={2.5}>
@@ -334,6 +344,11 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
                 <MenuItem value="">
                   <em>Nenhum</em>
                 </MenuItem>
+                {fornecedores.length === 0 && (
+                  <MenuItem value="" disabled>
+                    Nenhum fornecedor disponível
+                  </MenuItem>
+                )}
                 {fornecedores.map((fornecedor) => (
                   <MenuItem key={fornecedor.id} value={fornecedor.id}>
                     {fornecedor.nome}
@@ -521,10 +536,11 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
                 </Box>
               ) : (
                 <Box>
-                  <ImageIcon sx={{ fontSize: 40, color: 'grey.400', mb: 1 }} />
-                  <Typography variant="body2" color="textSecondary" gutterBottom>
-                    Sem imagem
-                  </Typography>
+                  <EmptyStatePanel
+                    title="Sem imagem"
+                    icon={<ImageIcon sx={{ fontSize: 40 }} />}
+                    compact
+                  />
                   <Button
                     variant="contained"
                     size="small"
@@ -556,11 +572,12 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
         </Button>
         <Button
           onClick={handleSave}
+          disabled={saving}
           variant="contained"
           color="primary"
           startIcon={<SaveIcon />}
         >
-          Salvar
+          {saving ? 'Salvando...' : 'Salvar'}
         </Button>
       </DialogActions>
     </Dialog>

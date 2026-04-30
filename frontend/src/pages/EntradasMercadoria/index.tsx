@@ -15,7 +15,6 @@ import {
   TableRow,
   IconButton,
   Autocomplete,
-  Alert,
   CircularProgress,
   Dialog,
   DialogTitle,
@@ -38,6 +37,8 @@ import {
 } from '@mui/icons-material';
 import api from '../../lib/api';
 import { formatCurrency } from '../../utils/formatCurrency';
+import OperationalNotice from '../../components/Management/OperationalNotice';
+import EmptyStatePanel from '../../components/Management/EmptyStatePanel';
 
 interface Produto {
   id: string;
@@ -435,15 +436,21 @@ const EntradasMercadoria = () => {
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
+        <OperationalNotice
+          severity="error"
+          title="Falha ao processar entrada"
+          message={error}
+          onClose={() => setError(null)}
+        />
       )}
 
       {success && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
-          {success}
-        </Alert>
+        <OperationalNotice
+          severity="success"
+          title="Operação concluída"
+          message={success}
+          onClose={() => setSuccess(null)}
+        />
       )}
 
       <Box
@@ -565,12 +572,11 @@ const EntradasMercadoria = () => {
             <Divider sx={{ mb: 2 }} />
 
             {itens.length === 0 ? (
-              <Box textAlign="center" py={4}>
-                <ShoppingCartIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-                <Typography color="text.secondary">
-                  Nenhum item adicionado. Clique em "Adicionar Item" para começar.
-                </Typography>
-              </Box>
+              <EmptyStatePanel
+                title="Nenhum item adicionado"
+                subtitle="Clique em 'Adicionar Item' para começar."
+                icon={<ShoppingCartIcon sx={{ fontSize: 60 }} />}
+              />
             ) : (
               <>
               <Box sx={{ display: { xs: 'none', md: 'block' } }}>
@@ -834,7 +840,11 @@ const EntradasMercadoria = () => {
                   {entradas.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} align="center">
-                        Nenhuma entrada encontrada
+                        <EmptyStatePanel
+                          title="Nenhuma entrada encontrada"
+                          subtitle="Registre uma entrada para visualizar o histórico."
+                          compact
+                        />
                       </TableCell>
                     </TableRow>
                   ) : (

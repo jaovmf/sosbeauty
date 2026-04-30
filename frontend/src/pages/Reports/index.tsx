@@ -13,14 +13,15 @@ import {
   Container,
   TablePagination,
   TextField,
+  MenuItem,
   Button,
   Grid,
+  Stack,
   Autocomplete,
   Chip,
   Card,
   CardContent,
   CircularProgress,
-  Alert,
   useTheme,
   useMediaQuery,
   ToggleButton,
@@ -65,6 +66,12 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/pt-br';
+import PageHeader from '../../components/Layout/PageHeader';
+import SectionBlock from '../../components/Management/SectionBlock';
+import KpiMetricCard from '../../components/Management/KpiMetricCard';
+import ChartPanel from '../../components/Management/ChartPanel';
+import OperationalNotice from '../../components/Management/OperationalNotice';
+import userPreferencesService from '../../services/userPreferences';
 
 // Registrar componentes do Chart.js
 ChartJS.register(
@@ -95,6 +102,15 @@ interface Produto {
 }
 
 type ChartType = 'line' | 'bar' | 'pie';
+
+const REPORTS_LAST_FILTERS_KEY = 'sosbeauty:reports:lastFilters';
+
+interface ReportsFilterSnapshot {
+  startDate: string | null;
+  endDate: string | null;
+  selectedClientId: number | null;
+  selectedProductIds: number[];
+}
 
 const Reports = () => {
   const theme = useTheme();
@@ -143,6 +159,7 @@ const Reports = () => {
   const [endDate, setEndDate] = useState<Dayjs | null>(null);
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Produto[]>([]);
+  const [pendingFilterRestore, setPendingFilterRestore] = useState<ReportsFilterSnapshot | null>(null);
 
   const [totalVendas, setTotalVendas] = useState(0);
   const [faturamentoTotal, setFaturamentoTotal] = useState(0);
@@ -154,6 +171,73 @@ const Reports = () => {
   useEffect(() => {
     carregarDados();
   }, []);
+
+  const getCurrentFilters = (): ReportsFilterSnapshot => ({
+    startDate: startDate ? startDate.format('YYYY-MM-DD') : null,
+    endDate: endDate ? endDate.format('YYYY-MM-DD') : null,
+    selectedClientId: selectedClient ? selectedClient.id : null,
+    selectedProductIds: selectedProducts.map((produto) => produto.id),
+  });
+
+  const applyFilterSnapshot = (snapshot: ReportsFilterSnapshot) => {
+    setStartDate(snapshot.startDate ? dayjs(snapshot.startDate) : null);
+    setEndDate(snapshot.endDate ? dayjs(snapshot.endDate) : null);
+    setSelectedClient(
+      snapshot.selectedClientId
+        ? clientes.find((cliente) => cliente.id === snapshot.selectedClientId) || null
+        : null
+    );
+    setSelectedProducts(
+      snapshot.selectedProductIds.length > 0
+        ? produtos.filter((produto) => snapshot.selectedProductIds.includes(produto.id))
+        : []
+    );
+    setPage(0);
+  };
+
+  useEffect(() => {
+    const loadInitialPrefs = async () => {
+      try {
+        const [lastRaw, serverPrefs] = await Promise.all([
+          Promise.resolve(localStorage.getItem(REPORTS_LAST_FILTERS_KEY)),
+          userPreferencesService.getPreferences().catch(() => ({})),
+        ]);
+
+        if (lastRaw) {
+          const parsed = JSON.parse(lastRaw) as ReportsFilterSnapshot;
+          setPendingFilterRestore(parsed);
+        }
+
+        const serverReportsPrefs = serverPrefs?.reports || {};
+        if (serverReportsPrefs.layout?.rowsPerPage) {
+          setRowsPerPage(serverReportsPrefs.layout.rowsPerPage);
+        }
+      } catch {
+        // Sem fallback adicional necessário
+      }
+    };
+
+    loadInitialPrefs();
+  }, []);
+
+  useEffect(() => {
+    if (!pendingFilterRestore || loading) return;
+    applyFilterSnapshot(pendingFilterRestore);
+    setPendingFilterRestore(null);
+  }, [pendingFilterRestore, loading, clientes, produtos]);
+
+  useEffect(() => {
+    if (pendingFilterRestore) return;
+    localStorage.setItem(REPORTS_LAST_FILTERS_KEY, JSON.stringify(getCurrentFilters()));
+  }, [startDate, endDate, selectedClient, selectedProducts, pendingFilterRestore]);
+
+  useEffect(() => {
+    userPreferencesService.patchPreferences({
+      reports: {
+        layout: { rowsPerPage },
+      },
+    }).catch(() => {});
+  }, [rowsPerPage]);
 
   useEffect(() => {
     if (startDate || endDate || selectedClient || selectedProducts.length > 0) {
@@ -339,22 +423,10 @@ const Reports = () => {
     return { salesByDay, revenueByDay, topProducts, salesByStatus };
   }, [vendas]);
 
-  // Calcular tendências (comparar com período anterior)
+  // Mantemos a tendência neutra até existir comparação com período anterior.
   const trends = useMemo(() => {
-    if (!vendas || vendas.length === 0) {
-      return { sales: 0, revenue: 0, ticket: 0 };
-    }
-
-    // Por simplicidade, vamos simular tendências baseadas em dados reais
-    // Em produção, isso seria calculado comparando com período anterior
-    const avgTicket = faturamentoTotal / (totalVendas || 1);
-
-    return {
-      sales: totalVendas > 0 ? Math.random() * 30 - 10 : 0, // -10% a +20%
-      revenue: faturamentoTotal > 0 ? Math.random() * 30 - 10 : 0,
-      ticket: avgTicket > 0 ? Math.random() * 20 - 5 : 0
-    };
-  }, [vendas, totalVendas, faturamentoTotal]);
+    return { sales: 0, revenue: 0, ticket: 0 };
+  }, []);
 
   const paginatedSales = vendas.slice(
     page * rowsPerPage,
@@ -440,7 +512,7 @@ const Reports = () => {
       body: tableData,
       startY: 85,
       styles: { fontSize: 8 },
-      headStyles: { fillColor: [186, 143, 238] }
+      headStyles: { fillColor: [29, 78, 137] }
     });
 
     const fileName = `relatorio-vendas-${new Date().toISOString().split('T')[0]}.pdf`;
@@ -577,142 +649,63 @@ const Reports = () => {
     return (
       <Container maxWidth="xl">
         <Box padding={3}>
-          <Alert severity="error">{error}</Alert>
+          <OperationalNotice
+            severity="error"
+            title="Falha ao carregar relatórios"
+            message={error}
+          />
         </Box>
       </Container>
     );
   }
 
-  const KPICard = ({
-    title,
-    value,
-    icon,
-    color,
-    trend
-  }: {
-    title: string;
-    value: string | number;
-    icon: React.ReactNode;
-    color: string;
-    trend?: number;
-  }) => (
-    <Card
-      elevation={0}
-      sx={{
-        background: `linear-gradient(135deg, ${color}15 0%, ${color}05 100%)`,
-        border: `1px solid ${color}30`,
-        borderRadius: 3,
-        height: '100%'
-      }}
-    >
-      <CardContent sx={{ padding: { xs: 2, md: 3 } }}>
-        <Box display="flex" alignItems="flex-start" justifyContent="space-between" marginBottom={1}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: color + '20'
-            }}
-          >
-            {icon}
-          </Box>
-          {trend !== undefined && (
-            <Box display="flex" alignItems="center" gap={0.5}>
-              {trend > 0 ? (
-                <TrendingUpIcon sx={{ fontSize: 18, color: 'success.main' }} />
-              ) : trend < 0 ? (
-                <TrendingDownIcon sx={{ fontSize: 18, color: 'error.main' }} />
-              ) : null}
-              <Typography
-                variant="caption"
-                sx={{
-                  color: trend > 0 ? 'success.main' : trend < 0 ? 'error.main' : 'text.secondary',
-                  fontWeight: 600
-                }}
-              >
-                {trend > 0 ? '+' : ''}{trend.toFixed(1)}%
-              </Typography>
-            </Box>
-          )}
-        </Box>
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' }, marginBottom: 0.5 }}
-        >
-          {title}
-        </Typography>
-        <Typography
-          variant="h4"
-          sx={{
-            fontSize: { xs: '1.5rem', md: '2rem' },
-            fontWeight: 700,
-            color: color
-          }}
-        >
-          {value}
-        </Typography>
-      </CardContent>
-    </Card>
-  );
-
   return (
     <>
       <Container maxWidth="xl">
         <Box padding={{ xs: 1, sm: 2, md: 3 }}>
-          {/* Header */}
           <Box marginBottom={3}>
-            <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2} marginBottom={2}>
-              <Box display="flex" alignItems="center">
-                <AssessmentIcon sx={{ marginRight: 1, fontSize: { xs: 28, md: 32 } }} />
-                <Typography
-                  variant="h4"
-                  component="h1"
-                  sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}
-                >
-                  Relatórios de Vendas
-                </Typography>
-              </Box>
-              <Box display="flex" gap={1} flexDirection={{ xs: "column", sm: "row" }} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<FileDownloadIcon />}
-                  onClick={exportToExcel}
-                  disabled={vendas.length === 0}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                  size="medium"
-                >
-                  Excel
-                </Button>
-                <Button
-                  variant="contained"
-                  startIcon={<PictureAsPdfIcon />}
-                  onClick={exportToPDF}
-                  disabled={vendas.length === 0}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                  size="medium"
-                >
-                  PDF
-                </Button>
-                <Button
-                  variant="contained"
-                  color={showProdutosMaisVendidos ? 'secondary' : 'primary'}
-                  startIcon={<BarChartIcon />}
-                  onClick={async () => {
-                    if (!showProdutosMaisVendidos) await carregarProdutosMaisVendidos();
-                    setShowProdutosMaisVendidos(v => !v);
-                  }}
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
-                  size="medium"
-                >
-                  Produtos Mais Vendidos
-                </Button>
-              </Box>
-            </Box>
+            <PageHeader
+              title="Relatórios de Vendas"
+              subtitle="Análise de desempenho, faturamento e mix de produtos"
+              icon={<AssessmentIcon fontSize="small" />}
+              actions={
+                <Box display="flex" gap={1} flexDirection={{ xs: 'column', sm: 'row' }} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<FileDownloadIcon />}
+                    onClick={exportToExcel}
+                    disabled={vendas.length === 0}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    size="medium"
+                  >
+                    Excel
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<PictureAsPdfIcon />}
+                    onClick={exportToPDF}
+                    disabled={vendas.length === 0}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    size="medium"
+                  >
+                    PDF
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color={showProdutosMaisVendidos ? 'secondary' : 'primary'}
+                    startIcon={<BarChartIcon />}
+                    onClick={async () => {
+                      if (!showProdutosMaisVendidos) await carregarProdutosMaisVendidos();
+                      setShowProdutosMaisVendidos(v => !v);
+                    }}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    size="medium"
+                  >
+                    Produtos Mais Vendidos
+                  </Button>
+                </Box>
+              }
+            />
             {/* Tabela de Produtos Mais Vendidos - AGORA LOGO ABAIXO DO TÍTULO */}
             {showProdutosMaisVendidos && (
               <Box marginY={3}>
@@ -767,7 +760,7 @@ const Reports = () => {
           {/* KPI Cards */}
           <Grid container spacing={2} marginBottom={3}>
             <Grid item xs={12} sm={6} md={2.4}>
-              <KPICard
+              <KpiMetricCard
                 title="Total de Vendas"
                 value={totalVendas}
                 icon={<ShoppingCartIcon sx={{ color: theme.palette.primary.main }} />}
@@ -776,7 +769,7 @@ const Reports = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={2.4}>
-              <KPICard
+              <KpiMetricCard
                 title="Faturamento Total"
                 value={formatCurrency(faturamentoTotal)}
                 icon={<AttachMoneyIcon sx={{ color: theme.palette.success.main }} />}
@@ -785,7 +778,7 @@ const Reports = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={2.4}>
-              <KPICard
+              <KpiMetricCard
                 title="Ticket Médio"
                 value={formatCurrency(ticketMedio)}
                 icon={<InventoryIcon sx={{ color: theme.palette.info.main }} />}
@@ -794,7 +787,7 @@ const Reports = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={2.4}>
-              <KPICard
+              <KpiMetricCard
                 title="Total em Frete"
                 value={formatCurrency(totalFrete)}
                 icon={<LocalShippingIcon sx={{ color: theme.palette.warning.main }} />}
@@ -802,7 +795,7 @@ const Reports = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={2.4}>
-              <KPICard
+              <KpiMetricCard
                 title="Total de Clientes"
                 value={clientes.length}
                 icon={<PeopleIcon sx={{ color: theme.palette.secondary.main }} />}
@@ -811,18 +804,10 @@ const Reports = () => {
             </Grid>
           </Grid>
 
-          {/* Filtros */}
-          <Paper elevation={2} sx={{ padding: { xs: 2, md: 3 }, marginBottom: 3, borderRadius: 3 }}>
-            <Typography
-              variant="h6"
-              marginBottom={2}
-              fontWeight="bold"
-              sx={{
-                fontSize: { xs: '1rem', md: '1.25rem' }
-              }}
-            >
-              Filtros
-            </Typography>
+          <SectionBlock
+            title="Filtros"
+            icon={<BarChartIcon color="primary" fontSize="small" />}
+          >
             <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pt-br">
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={12} sm={6} md={3}>
@@ -927,20 +912,16 @@ const Reports = () => {
               </Grid>
               </Grid>
             </LocalizationProvider>
-          </Paper>
+          </SectionBlock>
 
           {/* Gráficos */}
           <Grid container spacing={2} marginBottom={3}>
             {/* Vendas por Dia */}
             <Grid item xs={12} lg={8}>
-              <Paper elevation={2} sx={{ padding: { xs: 2, md: 3 }, borderRadius: 3, height: '100%' }}>
-                <Box display="flex" alignItems="center" justifyContent="space-between" marginBottom={2}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <ShowChartIcon color="primary" />
-                    <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                      Vendas no Período
-                    </Typography>
-                  </Box>
+              <ChartPanel
+                title="Vendas no Período"
+                icon={<ShowChartIcon color="primary" />}
+                actions={
                   <ToggleButtonGroup
                     value={chartType}
                     exclusive
@@ -954,74 +935,56 @@ const Reports = () => {
                       <BarChartIcon fontSize="small" />
                     </ToggleButton>
                   </ToggleButtonGroup>
-                </Box>
-                <Box sx={{ height: { xs: 250, md: 300 } }}>
-                  {chartType === 'line' ? (
-                    <Line data={salesChartData} options={lineChartOptions} />
-                  ) : (
-                    <Bar data={salesChartData} options={barChartOptions} />
-                  )}
-                </Box>
-              </Paper>
+                }
+              >
+                {chartType === 'line' ? (
+                  <Line data={salesChartData} options={lineChartOptions} />
+                ) : (
+                  <Bar data={salesChartData} options={barChartOptions} />
+                )}
+              </ChartPanel>
             </Grid>
 
             {/* Vendas por Status */}
             <Grid item xs={12} lg={4}>
-              <Paper elevation={2} sx={{ padding: { xs: 2, md: 3 }, borderRadius: 3, height: '100%' }}>
-                <Box display="flex" alignItems="center" gap={1} marginBottom={2}>
-                  <PieChartIcon color="secondary" />
-                  <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                    Vendas por Status
-                  </Typography>
-                </Box>
-                <Box sx={{ height: { xs: 250, md: 300 } }}>
-                  <Pie data={statusChartData} options={pieChartOptions} />
-                </Box>
-              </Paper>
+              <ChartPanel
+                title="Vendas por Status"
+                icon={<PieChartIcon color="secondary" />}
+              >
+                <Pie data={statusChartData} options={pieChartOptions} />
+              </ChartPanel>
             </Grid>
 
             {/* Faturamento por Dia */}
             <Grid item xs={12} lg={8}>
-              <Paper elevation={2} sx={{ padding: { xs: 2, md: 3 }, borderRadius: 3, height: '100%' }}>
-                <Box display="flex" alignItems="center" gap={1} marginBottom={2}>
-                  <AttachMoneyIcon color="success" />
-                  <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                    Faturamento no Período
-                  </Typography>
-                </Box>
-                <Box sx={{ height: { xs: 250, md: 300 } }}>
-                  {chartType === 'line' ? (
-                    <Line data={revenueChartData} options={lineChartOptions} />
-                  ) : (
-                    <Bar data={revenueChartData} options={barChartOptions} />
-                  )}
-                </Box>
-              </Paper>
+              <ChartPanel
+                title="Faturamento no Período"
+                icon={<AttachMoneyIcon color="success" />}
+              >
+                {chartType === 'line' ? (
+                  <Line data={revenueChartData} options={lineChartOptions} />
+                ) : (
+                  <Bar data={revenueChartData} options={barChartOptions} />
+                )}
+              </ChartPanel>
             </Grid>
 
             {/* Top Produtos */}
             <Grid item xs={12} lg={4}>
-              <Paper elevation={2} sx={{ padding: { xs: 2, md: 3 }, borderRadius: 3, height: '100%' }}>
-                <Box display="flex" alignItems="center" gap={1} marginBottom={2}>
-                  <InventoryIcon color="info" />
-                  <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                    Top 5 Produtos
-                  </Typography>
-                </Box>
-                <Box sx={{ height: { xs: 250, md: 300 } }}>
-                  <Bar data={topProductsChartData} options={barChartOptions} />
-                </Box>
-              </Paper>
+              <ChartPanel
+                title="Top 5 Produtos"
+                icon={<InventoryIcon color="info" />}
+              >
+                <Bar data={topProductsChartData} options={barChartOptions} />
+              </ChartPanel>
             </Grid>
           </Grid>
 
-          {/* Tabela de Vendas */}
-          <Paper elevation={2} sx={{ borderRadius: 3 }}>
-            <Box sx={{ padding: { xs: 2, md: 3 }, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                Detalhamento de Vendas
-              </Typography>
-            </Box>
+          <SectionBlock
+            title="Detalhamento de Vendas"
+            showHeaderDivider
+            padding={0}
+          >
 
             <Box sx={{ display: { xs: 'none', md: 'block' } }}>
               <TableContainer>
@@ -1141,9 +1104,10 @@ const Reports = () => {
                 `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
               }
             />
-          </Paper>
+          </SectionBlock>
         </Box>
       </Container>
+
     </>
   );
 };

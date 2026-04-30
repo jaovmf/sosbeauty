@@ -83,7 +83,7 @@ const SalesScreen = () => {
   const [quantityInput, setQuantityInput] = useState<string>('1');
 
   // Estados de entrega e pagamento
-  const [shippingOption, setShippingOption] = useState<'7' | '10' | 'free'>('7');
+  const [shippingOption, setShippingOption] = useState<'8' | '10' | 'free'>('8');
   const [paymentMethod, setPaymentMethod] = useState('');
 
   // Estados de desconto
@@ -146,7 +146,8 @@ const SalesScreen = () => {
       setDescontoValor(venda.desconto_valor || 0);
 
       const shippingValue = Number(venda.shipping_value || 0);
-      if (shippingValue === 7) setShippingOption('7');
+      if (shippingValue === 8) setShippingOption('8');
+      else if (shippingValue === 7) setShippingOption('8');
       else if (shippingValue === 10) setShippingOption('10');
       else setShippingOption('free');
 
@@ -257,7 +258,7 @@ const SalesScreen = () => {
 
   const getShippingValue = () => {
     if (shippingOption === 'free') return 0;
-    if (shippingOption === '7') return 7;
+    if (shippingOption === '8') return 8;
     if (shippingOption === '10') return 10;
     return 0;
   };
@@ -344,7 +345,7 @@ const SalesScreen = () => {
         // Limpar formulário
         setSelectedClient(null);
         setCartItems([]);
-        setShippingOption('7');
+        setShippingOption('8');
         setPaymentMethod('');
         setDescontoTipo('');
         setDescontoValor(0);
@@ -802,7 +803,7 @@ Se estiver tudo certo, me confirme para finalizarmos sua venda ✅`;
 
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
                   {[
-                    { value: '7', label: 'R$ 7,00', icon: '🚚' },
+                    { value: '8', label: 'R$ 8,00', icon: '🚚' },
                     { value: '10', label: 'R$ 10,00', icon: '🚚' },
                     { value: 'free', label: 'Grátis', icon: '🎁' }
                   ].map((option) => (

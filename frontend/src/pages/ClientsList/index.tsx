@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import {
   Box,
   Typography,
@@ -16,19 +16,26 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
-  Alert,
   TextField,
+  MenuItem,
   InputAdornment,
   Stack,
   IconButton,
   Tooltip,
   Grid,
-  Fab
+  Fab,
+  Checkbox,
+  TablePagination,
+  TableSortLabel,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   Edit as EditIcon,
+  Delete as DeleteIcon,
   Search as SearchIcon,
   PersonAdd as PersonAddIcon,
+  People as PeopleIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
   LocationOn as LocationIcon,
@@ -38,6 +45,25 @@ import {
 import { useClientes } from '../../hooks/useClientes';
 import { useNavigate } from 'react-router-dom';
 import type { Cliente } from '../../types/api';
+import PageHeader from '../../components/Layout/PageHeader';
+import SectionBlock from '../../components/Management/SectionBlock';
+import OperationalNotice from '../../components/Management/OperationalNotice';
+import EmptyStatePanel from '../../components/Management/EmptyStatePanel';
+import userPreferencesService from '../../services/userPreferences';
+import toast from 'react-hot-toast';
+
+const CLIENTS_LAST_FILTERS_KEY = 'sosbeauty:clients:lastFilters';
+
+interface ClientFilterSnapshot {
+  searchTerm: string;
+  sortBy: 'name' | 'email' | 'phone' | 'city';
+  sortDirection: 'asc' | 'desc';
+}
+
+interface ClientsLayoutPrefs {
+  rowsPerPage: number;
+  denseRows: boolean;
+}
 
 interface EditFormData {
   name: string;
@@ -58,13 +84,22 @@ const ClientsList = () => {
     error,
     listarClientes,
     atualizarCliente,
+    deletarCliente,
     clearError
   } = useClientes();
 
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'email' | 'phone' | 'city'>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedClientIds, setSelectedClientIds] = useState<number[]>([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [denseRows, setDenseRows] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  const deferredSearchInput = useDeferredValue(searchInput);
   const [editForm, setEditForm] = useState<EditFormData>({
     name: '',
     email: '',
@@ -82,15 +117,56 @@ const ClientsList = () => {
   }, [listarClientes]);
 
   useEffect(() => {
-    if (searchTerm.trim()) {
-      const timeoutId = setTimeout(() => {
-        listarClientes(searchTerm);
-      }, 500);
-      return () => clearTimeout(timeoutId);
-    } else {
-      listarClientes();
-    }
-  }, [searchTerm, listarClientes]);
+    const loadInitialPrefs = async () => {
+      try {
+        const lastRaw = localStorage.getItem(CLIENTS_LAST_FILTERS_KEY);
+        if (lastRaw) {
+          const parsed = JSON.parse(lastRaw) as ClientFilterSnapshot;
+          setSearchTerm(parsed.searchTerm || '');
+          setSearchInput(parsed.searchTerm || '');
+          setSortBy(parsed.sortBy || 'name');
+          setSortDirection(parsed.sortDirection || 'asc');
+        }
+
+        const serverPrefs = await userPreferencesService.getPreferences().catch(() => ({}));
+
+        const serverClientsPrefs = serverPrefs?.clients || {};
+
+        if (serverClientsPrefs.layout) {
+          setRowsPerPage(serverClientsPrefs.layout.rowsPerPage || 10);
+          setDenseRows(!!serverClientsPrefs.layout.denseRows);
+        }
+      } catch {
+        // Sem fallback adicional necessário
+      }
+    };
+
+    loadInitialPrefs();
+  }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setSearchTerm(deferredSearchInput);
+      setPage(0);
+    }, 250);
+    return () => clearTimeout(timeout);
+  }, [deferredSearchInput]);
+
+  useEffect(() => {
+    localStorage.setItem(CLIENTS_LAST_FILTERS_KEY, JSON.stringify({
+      searchTerm,
+      sortBy,
+      sortDirection,
+    }));
+  }, [searchTerm, sortBy, sortDirection]);
+
+  useEffect(() => {
+    userPreferencesService.patchPreferences({
+      clients: {
+        layout: { rowsPerPage, denseRows },
+      },
+    }).catch(() => {});
+  }, [rowsPerPage, denseRows]);
 
   const handleEdit = (cliente: Cliente) => {
     setSelectedClient(cliente);
@@ -227,11 +303,11 @@ const ClientsList = () => {
       if (success) {
         setEditOpen(false);
         setSelectedClient(null);
-        // Recarregar lista
-        listarClientes(searchTerm || undefined);
+        toast.success('Cliente atualizado com sucesso.');
       }
     } catch (err) {
       console.error('Erro ao atualizar cliente:', err);
+      toast.error('Não foi possível atualizar o cliente.');
     } finally {
       setEditLoading(false);
     }
@@ -247,40 +323,127 @@ const ClientsList = () => {
     navigate('/clients');
   };
 
-  const filteredClientes = clientes.filter(cliente =>
-    cliente.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.phone?.includes(searchTerm) ||
-    cliente.city?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleSort = (column: 'name' | 'email' | 'phone' | 'city') => {
+    if (sortBy === column) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortBy(column);
+    setSortDirection('asc');
+  };
+
+  const toggleClientSelection = (clientId: number) => {
+    setSelectedClientIds((prev) => (
+      prev.includes(clientId) ? prev.filter((id) => id !== clientId) : [...prev, clientId]
+    ));
+  };
+
+  const togglePageSelection = (ids: number[]) => {
+    const allSelected = ids.every((id) => selectedClientIds.includes(id));
+    if (allSelected) {
+      setSelectedClientIds((prev) => prev.filter((id) => !ids.includes(id)));
+      return;
+    }
+    setSelectedClientIds((prev) => Array.from(new Set([...prev, ...ids])));
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedClientIds.length === 0) return;
+    if (!window.confirm(`Deseja excluir ${selectedClientIds.length} cliente(s)?`)) return;
+
+    let successCount = 0;
+    for (const id of selectedClientIds) {
+      const ok = await deletarCliente(id);
+      if (ok) successCount += 1;
+    }
+    setSelectedClientIds([]);
+    if (successCount > 0) {
+      toast.success(`${successCount} cliente(s) removido(s).`);
+    } else {
+      toast.error('Não foi possível remover os clientes selecionados.');
+    }
+  };
+
+  const handleDeleteClient = async (id?: number) => {
+    if (!id) return;
+    if (!window.confirm('Deseja excluir este cliente?')) return;
+    const ok = await deletarCliente(id);
+    if (ok) {
+      setSelectedClientIds((prev) => prev.filter((clientId) => clientId !== id));
+      toast.success('Cliente removido com sucesso.');
+    } else {
+      toast.error('Não foi possível remover o cliente.');
+    }
+  };
+
+  const filteredClientes = useMemo(() => {
+    const filtered = clientes.filter(cliente =>
+      cliente.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cliente.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cliente.phone?.includes(searchTerm) ||
+      cliente.city?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return filtered.sort((a, b) => {
+      const modifier = sortDirection === 'asc' ? 1 : -1;
+      const aValue = String((a as any)[sortBy] || '').toLowerCase();
+      const bValue = String((b as any)[sortBy] || '').toLowerCase();
+      return aValue.localeCompare(bValue) * modifier;
+    });
+  }, [clientes, searchTerm, sortBy, sortDirection]);
+
+  const paginatedClientes = filteredClientes.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  useEffect(() => {
+    setSelectedClientIds((prev) => prev.filter((id) => filteredClientes.some((cliente) => cliente.id === id)));
+  }, [filteredClientes]);
 
   return (
     <>
       <Container maxWidth="xl">
         <Box padding={{ xs: 2, md: 3 }}>
-          <Box marginBottom={{ xs: 3, md: 4 }}>
-            <Typography variant="h4" fontWeight="bold" gutterBottom>
-              Clientes
-            </Typography>
-            <Typography variant="body1" color="textSecondary">
-              Gerencie todos os clientes cadastrados no sistema
-            </Typography>
-          </Box>
+          <PageHeader
+            title="Clientes"
+            subtitle="Gestão de cadastro, contato e localização dos clientes"
+            icon={<PeopleIcon fontSize="small" />}
+            actions={
+              <Button
+                variant="contained"
+                startIcon={<PersonAddIcon />}
+                onClick={handleNewClient}
+              >
+                Novo Cliente
+              </Button>
+            }
+          />
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }} onClose={() => clearError()}>
-              {error}
-            </Alert>
+            <OperationalNotice
+              severity="error"
+              title="Falha ao carregar clientes"
+              message={error}
+              onClose={() => clearError()}
+              mb={3}
+            />
           )}
 
-          {/* Barra de Pesquisa */}
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Stack direction="row" alignItems="center" spacing={2}>
+          <SectionBlock
+            title="Filtros"
+            icon={<SearchIcon color="primary" fontSize="small" />}
+            actions={
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 'max-content', alignSelf: 'center' }}>
+                  {filteredClientes.length} cliente(s)
+                </Typography>
+              </Stack>
+            }
+          >
+            <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
               <TextField
                 fullWidth
                 placeholder="Pesquisar por nome, email, telefone ou cidade..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 variant="outlined"
                 size="medium"
                 InputProps={{
@@ -291,43 +454,89 @@ const ClientsList = () => {
                   ),
                 }}
               />
-              <Typography variant="body2" color="textSecondary" sx={{ minWidth: 'max-content' }}>
-                {filteredClientes.length} cliente(s)
-              </Typography>
+              <FormControlLabel
+                control={<Switch checked={denseRows} onChange={(e) => setDenseRows(e.target.checked)} size="small" />}
+                label="Tabela compacta"
+              />
+              <Button
+                size="small"
+                color="error"
+                variant="outlined"
+                disabled={selectedClientIds.length === 0}
+                onClick={handleBulkDelete}
+              >
+                Excluir selecionados ({selectedClientIds.length})
+              </Button>
             </Stack>
-          </Paper>
+          </SectionBlock>
 
-          {/* Tabela de Clientes */}
-          <Paper>
+          <SectionBlock
+            title="Clientes Cadastrados"
+            showHeaderDivider
+            padding={0}
+          >
             <TableContainer>
-              <Table>
+              <Table size={denseRows ? 'small' : 'medium'}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Nome</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Telefone</TableCell>
-                    <TableCell>Cidade</TableCell>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        size="small"
+                        checked={paginatedClientes.length > 0 && paginatedClientes.every((cliente) => selectedClientIds.includes(cliente.id || 0))}
+                        indeterminate={paginatedClientes.some((cliente) => selectedClientIds.includes(cliente.id || 0)) && !paginatedClientes.every((cliente) => selectedClientIds.includes(cliente.id || 0))}
+                        onChange={() => togglePageSelection(paginatedClientes.map((cliente) => cliente.id || 0))}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel active={sortBy === 'name'} direction={sortDirection} onClick={() => handleSort('name')}>
+                        Nome
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel active={sortBy === 'email'} direction={sortDirection} onClick={() => handleSort('email')}>
+                        Email
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel active={sortBy === 'phone'} direction={sortDirection} onClick={() => handleSort('phone')}>
+                        Telefone
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell>
+                      <TableSortLabel active={sortBy === 'city'} direction={sortDirection} onClick={() => handleSort('city')}>
+                        Cidade
+                      </TableSortLabel>
+                    </TableCell>
                     <TableCell align="center">Ações</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={6} align="center">
                         <CircularProgress />
                       </TableCell>
                     </TableRow>
                   ) : filteredClientes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
-                        <Typography variant="body2" color="textSecondary">
-                          {searchTerm ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
-                        </Typography>
+                      <TableCell colSpan={6} align="center">
+                        <EmptyStatePanel
+                          title={searchTerm ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
+                          subtitle={searchTerm ? 'Tente ajustar os filtros de busca.' : 'Cadastre um cliente para iniciar.'}
+                          compact
+                        />
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredClientes.map((cliente) => (
-                      <TableRow key={cliente.id} hover>
+                    paginatedClientes.map((cliente) => (
+                      <TableRow key={cliente.id} hover selected={selectedClientIds.includes(cliente.id || 0)}>
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            size="small"
+                            checked={selectedClientIds.includes(cliente.id || 0)}
+                            onChange={() => toggleClientSelection(cliente.id || 0)}
+                          />
+                        </TableCell>
                         <TableCell>
                           <Typography variant="body2" fontWeight="bold">
                             {cliente.name}
@@ -358,6 +567,15 @@ const ClientsList = () => {
                           </Box>
                         </TableCell>
                         <TableCell align="center">
+                          <Tooltip title="Excluir cliente">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeleteClient(cliente.id)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="Editar cliente">
                             <IconButton
                               size="small"
@@ -373,8 +591,22 @@ const ClientsList = () => {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                component="div"
+                count={filteredClientes.length}
+                page={page}
+                onPageChange={(_e, newPage) => setPage(newPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(event) => {
+                  setRowsPerPage(parseInt(event.target.value, 10));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                labelRowsPerPage="Linhas por página:"
+                labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+              />
             </TableContainer>
-          </Paper>
+          </SectionBlock>
 
           {/* FAB para adicionar cliente */}
           <Fab
@@ -529,6 +761,7 @@ const ClientsList = () => {
               </Button>
             </DialogActions>
           </Dialog>
+
         </Box>
       </Container>
     </>

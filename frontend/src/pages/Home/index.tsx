@@ -10,7 +10,6 @@ import {
   ListItemText,
   Divider,
   CircularProgress,
-  Alert,
   alpha,
   useTheme,
   LinearProgress,
@@ -38,6 +37,11 @@ import { useNavigate } from 'react-router-dom';
 import { Chart as ChartJS, ArcElement, Tooltip as ChartTooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import { useDashboard } from '../../hooks/useDashboard';
+import PageHeader from '../../components/Layout/PageHeader';
+import KpiMetricCard from '../../components/Management/KpiMetricCard';
+import ChartPanel from '../../components/Management/ChartPanel';
+import OperationalNotice from '../../components/Management/OperationalNotice';
+import EmptyStatePanel from '../../components/Management/EmptyStatePanel';
 
 ChartJS.register(ArcElement, ChartTooltip, Legend);
 
@@ -115,45 +119,32 @@ const Home = () => {
   return (
     <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 }, pb: { xs: 10, md: 3 } }}>
       <Box>
-        {/* Header */}
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          mb={{ xs: 2, md: 3 }}
-          py={{ xs: 1, md: 0 }}
-        >
-          <Box>
-            <Typography
-              variant="h5"
-              fontWeight="bold"
-              sx={{ fontSize: { xs: '1.25rem', md: '2rem' } }}
-            >
-              Dashboard
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
-              Visão geral do seu negócio
-            </Typography>
-          </Box>
-          <Tooltip title="Atualizar">
-            <IconButton
-              onClick={carregarDados}
-              size="small"
-              sx={{
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.2) }
-              }}
-            >
-              <RefreshIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
+        <PageHeader
+          title="Dashboard"
+          subtitle="Visão consolidada da operação"
+          actions={
+            <Tooltip title="Atualizar indicadores">
+              <IconButton
+                onClick={carregarDados}
+                size="small"
+                sx={{
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.18) }
+                }}
+              >
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          }
+        />
 
         {/* Exibir erros */}
         {error && (
-          <Alert severity="error" sx={{ mb: 2, fontSize: '0.875rem' }}>
-            {error}
-          </Alert>
+          <OperationalNotice
+            severity="error"
+            title="Falha ao carregar o dashboard"
+            message={error}
+          />
         )}
 
         {/* MOBILE: Card Principal Compacto */}
@@ -161,8 +152,9 @@ const Home = () => {
           <Card
             elevation={0}
             sx={{
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-              color: 'white',
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+              bgcolor: alpha(theme.palette.primary.main, 0.06),
+              color: 'text.primary',
               borderRadius: 3
             }}
           >
@@ -191,7 +183,7 @@ const Home = () => {
                     width: 48,
                     height: 48,
                     borderRadius: 2,
-                    bgcolor: 'rgba(255,255,255,0.2)',
+                    bgcolor: alpha(theme.palette.primary.main, 0.12),
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
@@ -201,7 +193,7 @@ const Home = () => {
                 </Box>
               </Box>
 
-              <Divider sx={{ borderColor: 'rgba(255,255,255,0.2)', my: 2 }} />
+              <Divider sx={{ my: 2 }} />
 
               <Grid container spacing={1.5}>
                 <Grid item xs={4}>
@@ -247,7 +239,7 @@ const Home = () => {
               value: formatCurrency(vendasMes.total_vendas),
               subtitle: `${vendasMes.quantidade_vendas} vendas`,
               icon: <AttachMoneyIcon />,
-              color: '#2e7d32',
+              color: theme.palette.success.main,
               trend: crescimentoMensal
             },
             {
@@ -255,7 +247,7 @@ const Home = () => {
               value: formatCurrency(vendasSemana.total_vendas),
               subtitle: `${vendasSemana.quantidade_vendas} vendas`,
               icon: <ShoppingCartIcon />,
-              color: '#1976d2',
+              color: theme.palette.primary.main,
               trend: null
             },
             {
@@ -263,7 +255,7 @@ const Home = () => {
               value: formatCurrency(vendasSemana.ticket_medio),
               subtitle: 'Últimos 7 dias',
               icon: <ShowChartIcon />,
-              color: '#9c27b0',
+              color: theme.palette.info.main,
               trend: null
             },
             {
@@ -271,70 +263,19 @@ const Home = () => {
               value: stats.total_clientes.toString(),
               subtitle: 'Cadastrados',
               icon: <PeopleIcon />,
-              color: '#ed6c02',
+              color: theme.palette.warning.main,
               trend: null
             }
           ].map((kpi, index) => (
             <Grid item xs={12} sm={6} md={3} key={index}>
-              <Card
-                elevation={0}
-                sx={{
-                  height: '100%',
-                  borderRadius: 3,
-                  border: `1px solid ${alpha(kpi.color, 0.2)}`,
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: `0 8px 24px ${alpha(kpi.color, 0.15)}`
-                  }
-                }}
-              >
-                <CardContent sx={{ p: 2.5 }}>
-                  <Box display="flex" alignItems="flex-start" justifyContent="space-between" mb={1.5}>
-                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                      {kpi.title}
-                    </Typography>
-                    <Box
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        bgcolor: alpha(kpi.color, 0.1),
-                        color: kpi.color
-                      }}
-                    >
-                      {kpi.icon}
-                    </Box>
-                  </Box>
-                  <Typography variant="h4" fontWeight="bold" sx={{ mb: 0.5 }}>
-                    {kpi.value}
-                  </Typography>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Typography variant="caption" color="text.secondary">
-                      {kpi.subtitle}
-                    </Typography>
-                    {kpi.trend !== null && (
-                      <Box display="flex" alignItems="center" gap={0.5}>
-                        {kpi.trend >= 0 ? (
-                          <TrendingUpIcon sx={{ fontSize: 14, color: 'success.main' }} />
-                        ) : (
-                          <TrendingDownIcon sx={{ fontSize: 14, color: 'error.main' }} />
-                        )}
-                        <Typography
-                          variant="caption"
-                          fontWeight={600}
-                          color={kpi.trend >= 0 ? 'success.main' : 'error.main'}
-                        >
-                          {formatPercentage(kpi.trend)}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Box>
-                </CardContent>
-              </Card>
+              <KpiMetricCard
+                title={kpi.title}
+                value={kpi.value}
+                subtitle={kpi.subtitle}
+                icon={kpi.icon}
+                color={kpi.color}
+                trend={kpi.trend === null ? undefined : kpi.trend}
+              />
             </Grid>
           ))}
         </Grid>
@@ -502,11 +443,10 @@ const Home = () => {
                     </Box>
                   ))
                 ) : (
-                  <Box py={3} textAlign="center">
-                    <Typography variant="caption" color="text.secondary">
-                      Nenhuma venda esta semana
-                    </Typography>
-                  </Box>
+                  <EmptyStatePanel
+                    title="Nenhuma venda esta semana"
+                    compact
+                  />
                 )}
               </List>
             </CardContent>
@@ -516,112 +456,102 @@ const Home = () => {
         {/* Desktop: Gráficos e Top Produtos */}
         <Grid container spacing={3} sx={{ display: { xs: 'none', md: 'flex' } }}>
           <Grid item xs={12} md={5}>
-            <Card elevation={0} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}`, height: '100%' }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  Vendas por Categoria
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom mb={2}>
-                  Últimos 7 dias
-                </Typography>
-                <Box height={300} display="flex" justifyContent="center" alignItems="center">
-                  {pieChartData.labels.length > 0 ? (
-                    <Box width="100%" height="100%">
-                      <Pie data={pieChartData} options={chartOptions} />
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Nenhuma venda registrada
-                    </Typography>
-                  )}
-                </Box>
-              </CardContent>
-            </Card>
+            <ChartPanel
+              title="Vendas por Categoria"
+              icon={<ShowChartIcon color="primary" />}
+            >
+              <Typography variant="body2" color="text.secondary" gutterBottom mb={2}>
+                Últimos 7 dias
+              </Typography>
+              <Box height="100%" display="flex" justifyContent="center" alignItems="center">
+                {pieChartData.labels.length > 0 ? (
+                  <Box width="100%" height="100%">
+                    <Pie data={pieChartData} options={chartOptions} />
+                  </Box>
+                ) : (
+                  <EmptyStatePanel
+                    title="Nenhuma venda registrada"
+                    subtitle="Não há dados suficientes para o gráfico neste período."
+                  />
+                )}
+              </Box>
+            </ChartPanel>
           </Grid>
 
           <Grid item xs={12} md={7}>
-            <Card elevation={0} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}`, height: '100%' }}>
-              <CardContent sx={{ p: 3 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Box>
-                    <Typography variant="h6" fontWeight="bold">
-                      Top Produtos
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Mais vendidos da semana
-                    </Typography>
-                  </Box>
-                  <CheckCircleIcon sx={{ color: 'success.main' }} />
-                </Box>
-                <List disablePadding>
-                  {topProdutos.length > 0 ? (
-                    topProdutos.slice(0, 5).map((product, index) => (
-                      <Box key={product.name}>
-                        <ListItem
+            <ChartPanel
+              title="Top Produtos"
+              icon={<CheckCircleIcon sx={{ color: 'success.main' }} />}
+            >
+              <Typography variant="body2" color="text.secondary" mb={2}>
+                Mais vendidos da semana
+              </Typography>
+              <List disablePadding>
+                {topProdutos.length > 0 ? (
+                  topProdutos.slice(0, 5).map((product, index) => (
+                    <Box key={product.name}>
+                      <ListItem
+                        sx={{
+                          px: 0,
+                          py: 1.5,
+                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) },
+                          borderRadius: 1,
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <Box
                           sx={{
-                            px: 0,
-                            py: 1.5,
-                            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) },
+                            width: 32,
+                            height: 32,
                             borderRadius: 1,
-                            transition: 'all 0.2s ease'
+                            bgcolor: alpha(theme.palette.primary.main, 0.1),
+                            color: 'primary.main',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            fontSize: '0.875rem',
+                            mr: 2
                           }}
                         >
-                          <Box
-                            sx={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: 1,
-                              bgcolor: alpha(theme.palette.primary.main, 0.1),
-                              color: 'primary.main',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 'bold',
-                              fontSize: '0.875rem',
-                              mr: 2
-                            }}
-                          >
-                            #{index + 1}
-                          </Box>
-                          <ListItemText
-                            primary={
-                              <Typography variant="body1" fontWeight={500}>
-                                {product.name}
+                          #{index + 1}
+                        </Box>
+                        <ListItemText
+                          primary={
+                            <Typography variant="body1" fontWeight={500}>
+                              {product.name}
+                            </Typography>
+                          }
+                          secondary={
+                            <Box display="flex" gap={2} mt={0.5}>
+                              <Typography variant="caption" color="text.secondary">
+                                {product.quantidade_vendida} unidades
                               </Typography>
-                            }
-                            secondary={
-                              <Box display="flex" gap={2} mt={0.5}>
-                                <Typography variant="caption" color="text.secondary">
-                                  {product.quantidade_vendida} unidades
-                                </Typography>
-                                <Typography variant="caption" fontWeight={600} color="primary.main">
-                                  {formatCurrency(product.receita_total)}
-                                </Typography>
-                              </Box>
-                            }
+                              <Typography variant="caption" fontWeight={600} color="primary.main">
+                                {formatCurrency(product.receita_total)}
+                              </Typography>
+                            </Box>
+                          }
+                        />
+                        <Box sx={{ width: 60, ml: 2 }}>
+                          <LinearProgress
+                            variant="determinate"
+                            value={(product.quantidade_vendida / topProdutos[0].quantidade_vendida) * 100}
+                            sx={{ height: 6, borderRadius: 3 }}
                           />
-                          <Box sx={{ width: 60, ml: 2 }}>
-                            <LinearProgress
-                              variant="determinate"
-                              value={(product.quantidade_vendida / topProdutos[0].quantidade_vendida) * 100}
-                              sx={{ height: 6, borderRadius: 3 }}
-                            />
-                          </Box>
-                        </ListItem>
-                        {index < topProdutos.slice(0, 5).length - 1 && <Divider sx={{ my: 0 }} />}
-                      </Box>
-                    ))
-                  ) : (
-                    <Box py={4} textAlign="center">
-                      <InventoryIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-                      <Typography variant="body2" color="text.secondary">
-                        Nenhuma venda registrada esta semana
-                      </Typography>
+                        </Box>
+                      </ListItem>
+                      {index < topProdutos.slice(0, 5).length - 1 && <Divider sx={{ my: 0 }} />}
                     </Box>
-                  )}
-                </List>
-              </CardContent>
-            </Card>
+                  ))
+                ) : (
+                  <EmptyStatePanel
+                    title="Nenhuma venda registrada esta semana"
+                    icon={<InventoryIcon sx={{ fontSize: 48 }} />}
+                  />
+                )}
+              </List>
+            </ChartPanel>
           </Grid>
         </Grid>
       </Box>

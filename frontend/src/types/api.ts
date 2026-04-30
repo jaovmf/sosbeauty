@@ -153,3 +153,24 @@ export interface ApiError {
   error: string;
   message?: string;
 }
+
+export interface AuditLogItem {
+  _id: string;
+  entityType: 'produto' | 'venda';
+  entityId: string;
+  action: string;
+  actorId?: string;
+  actorName?: string;
+  changes: Record<string, any>;
+  meta?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditLogListResponse {
+  items: AuditLogItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}

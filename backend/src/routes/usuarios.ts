@@ -8,6 +8,63 @@ const router = express.Router();
 router.use(authenticate);
 
 /**
+ * GET /api/usuarios/me/preferences
+ * Retorna preferências de UI do usuário autenticado
+ */
+router.get('/me/preferences', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const usuario = await Usuario.findById(req.userId);
+
+    if (!usuario) {
+      res.status(404).json({ error: 'Usuário não encontrado.' });
+      return;
+    }
+
+    res.json({ preferences: usuario.uiPreferences || {} });
+  } catch (error: any) {
+    console.error('Erro ao obter preferências do usuário:', error);
+    res.status(500).json({ error: 'Erro ao obter preferências do usuário.' });
+  }
+});
+
+/**
+ * PATCH /api/usuarios/me/preferences
+ * Atualiza preferências de UI do usuário autenticado
+ */
+router.patch('/me/preferences', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { preferences } = req.body;
+
+    if (!preferences || typeof preferences !== 'object') {
+      res.status(400).json({ error: 'Campo preferences é obrigatório e deve ser um objeto.' });
+      return;
+    }
+
+    const usuario = await Usuario.findById(req.userId);
+
+    if (!usuario) {
+      res.status(404).json({ error: 'Usuário não encontrado.' });
+      return;
+    }
+
+    usuario.uiPreferences = {
+      ...(usuario.uiPreferences || {}),
+      ...preferences,
+    };
+
+    await usuario.save();
+
+    res.json({
+      message: 'Preferências atualizadas com sucesso.',
+      preferences: usuario.uiPreferences || {},
+    });
+  } catch (error: any) {
+    console.error('Erro ao atualizar preferências do usuário:', error);
+    res.status(500).json({ error: 'Erro ao atualizar preferências do usuário.' });
+  }
+});
+
+/**
  * GET /api/usuarios
  * Listar todos os usuários (apenas admin ou super_admin)
  */

@@ -7,8 +7,10 @@ export const useClientes = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  const listarClientes = useCallback(async (search?: string) => {
-    setLoading(true);
+  const listarClientes = useCallback(async (search?: string, showLoading: boolean = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     setError('');
     try {
       const result = await clientesService.listar(search);
@@ -17,7 +19,9 @@ export const useClientes = () => {
       console.error('Erro ao carregar clientes:', err);
       setError(err.response?.data?.error || 'Erro ao carregar clientes');
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -59,7 +63,7 @@ export const useClientes = () => {
     try {
       await clientesService.atualizar(id, cliente);
       // Atualizar lista de clientes após atualizar
-      await listarClientes();
+      await listarClientes(undefined, false);
       return true;
     } catch (err: any) {
       console.error('Erro ao atualizar cliente:', err);
@@ -76,7 +80,7 @@ export const useClientes = () => {
     try {
       await clientesService.deletar(id);
       // Atualizar lista de clientes após deletar
-      await listarClientes();
+      await listarClientes(undefined, false);
       return true;
     } catch (err: any) {
       console.error('Erro ao deletar cliente:', err);

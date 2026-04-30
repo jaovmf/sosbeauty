@@ -4,6 +4,7 @@ import Venda from '../models/Venda';
 import Produto from '../models/Produto';
 import Cliente from '../models/Cliente';
 import { authenticate } from '../middleware/auth';
+import { createAuditLog } from '../utils/auditLogger';
 
 const router = Router();
 
@@ -356,10 +357,31 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     // Dar baixa no estoque
     for (const item of itensProcessados) {
+      const produtoAtual = await Produto.findById(item.produto_id);
+
       await Produto.findByIdAndUpdate(
         item.produto_id,
         { $inc: { stock: -item.quantidade } }
       );
+
+      if (produtoAtual) {
+        await createAuditLog({
+          req,
+          entityType: 'produto',
+          entityId: String(item.produto_id),
+          action: 'estoque_baixado_venda',
+          changes: {
+            stock: {
+              from: Number(produtoAtual.stock),
+              to: Number(produtoAtual.stock) - Number(item.quantidade),
+            },
+          },
+          meta: {
+            venda_id: undefined,
+            quantidade: item.quantidade,
+          },
+        });
+      }
     }
 
     // Criar venda
@@ -380,6 +402,17 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     });
 
     await venda.save();
+
+    await createAuditLog({
+      req,
+      entityType: 'venda',
+      entityId: String(venda._id),
+      action: 'venda_criada_paga',
+      changes: {
+        status: { from: 'pendente', to: 'pago' },
+        total: venda.total,
+      },
+    });
 
     res.status(201).json({
       id: venda._id,
@@ -426,17 +459,52 @@ router.put('/:id/confirm', async (req: Request, res: Response): Promise<void> =>
 
     // Dar baixa no estoque
     for (const item of venda.itens) {
+      const produtoAtual = await Produto.findById(item.produto_id);
+
       await Produto.findByIdAndUpdate(
         item.produto_id,
         { $inc: { stock: -item.quantidade } }
       );
+
+      if (produtoAtual) {
+        await createAuditLog({
+          req,
+          entityType: 'produto',
+          entityId: String(item.produto_id),
+          action: 'estoque_baixado_confirmacao',
+          changes: {
+            stock: {
+              from: Number(produtoAtual.stock),
+              to: Number(produtoAtual.stock) - Number(item.quantidade),
+            },
+          },
+          meta: {
+            venda_id: String(venda._id),
+            quantidade: item.quantidade,
+          },
+        });
+      }
     }
 
     // Atualizar status da venda e frete
+    const previousStatus = venda.status;
     const shippingVal = shipping_value ? parseFloat(shipping_value) : 0;
     venda.status = 'pago';
     venda.shipping_value = shippingVal;
     await venda.save();
+
+    await createAuditLog({
+      req,
+      entityType: 'venda',
+      entityId: String(venda._id),
+      action: 'venda_confirmada',
+      changes: {
+        status: { from: previousStatus, to: venda.status },
+      },
+      meta: {
+        shipping_value: shippingVal,
+      },
+    });
 
     res.json({ message: 'Venda confirmada com sucesso' });
   } catch (error) {
@@ -462,8 +530,19 @@ router.put('/:id/cancel-pre-venda', async (req: Request, res: Response): Promise
       return;
     }
 
+    const previousStatus = venda.status;
     venda.status = 'cancelado';
     await venda.save();
+
+    await createAuditLog({
+      req,
+      entityType: 'venda',
+      entityId: String(venda._id),
+      action: 'pre_venda_cancelada',
+      changes: {
+        status: { from: previousStatus, to: venda.status },
+      },
+    });
 
     res.json({ message: 'Pré-venda cancelada com sucesso' });
   } catch (error) {
@@ -537,16 +616,26 @@ router.put('/:id/status', async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const venda = await Venda.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
+    const vendaAtual = await Venda.findById(id);
 
-    if (!venda) {
+    if (!vendaAtual) {
       res.status(404).json({ error: 'Venda não encontrada' });
       return;
     }
+
+    const previousStatus = vendaAtual.status;
+    vendaAtual.status = status;
+    await vendaAtual.save();
+
+    await createAuditLog({
+      req,
+      entityType: 'venda',
+      entityId: String(vendaAtual._id),
+      action: 'venda_status_atualizado',
+      changes: {
+        status: { from: previousStatus, to: vendaAtual.status },
+      },
+    });
 
     res.json({ message: 'Status da venda atualizado com sucesso' });
   } catch (error) {
