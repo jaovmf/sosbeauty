@@ -377,7 +377,7 @@ const Home = () => {
           </Stack>
         )}
 
-        {/* Top Produtos - Mobile Compacto */}
+        {/* Top Produtos - Mobile Compacto (melhorado) */}
         <Box sx={{ display: { xs: 'block', md: 'none' } }} mb={2}>
           <Card elevation={0} sx={{ borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
             <CardContent sx={{ p: 2 }}>
@@ -397,63 +397,72 @@ const Home = () => {
                 />
               </Box>
               <List disablePadding>
-                {topProdutos.length > 0 ? (
-                  topProdutos.slice(0, 3).map((product, index) => (
-                    <Box key={product.name}>
-                      <ListItem
+                {(topProdutos.length > 0 ? topProdutos.slice(0, 3) : Array(3).fill(null)).map((product, index) => (
+                  <Box key={product ? product.name : index}>
+                    <ListItem
+                      sx={{
+                        px: 0,
+                        py: 1,
+                        minHeight: 'auto',
+                        opacity: product ? 1 : 0.5
+                      }}
+                    >
+                      <Box
                         sx={{
-                          px: 0,
-                          py: 1,
-                          minHeight: 'auto'
+                          width: 24,
+                          height: 24,
+                          borderRadius: 1,
+                          bgcolor: product ? (index === 0 ? alpha(theme.palette.success.main, 0.15) : alpha(theme.palette.primary.main, 0.1)) : theme.palette.action.disabledBackground,
+                          color: product ? (index === 0 ? 'success.main' : 'primary.main') : theme.palette.text.disabled,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          fontSize: '0.75rem',
+                          mr: 1.5,
+                          flexShrink: 0
                         }}
                       >
-                        <Box
-                          sx={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: 1,
-                            bgcolor: alpha(theme.palette.primary.main, 0.1),
-                            color: 'primary.main',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 'bold',
-                            fontSize: '0.75rem',
-                            mr: 1.5,
-                            flexShrink: 0
-                          }}
-                        >
-                          {index + 1}
-                        </Box>
-                        <ListItemText
-                          primary={
-                            <Typography variant="body2" fontWeight={500} noWrap>
-                              {product.name}
-                            </Typography>
-                          }
-                          secondary={
+                        {index + 1}
+                      </Box>
+                      <ListItemText
+                        primary={
+                          <Typography variant="body2" fontWeight={500} noWrap>
+                            {product ? product.name : '---'}
+                          </Typography>
+                        }
+                        secondary={
+                          product ? (
                             <Typography variant="caption" color="text.secondary">
                               {product.quantidade_vendida} un · {formatCurrency(product.receita_total)}
                             </Typography>
-                          }
-                          sx={{ my: 0 }}
-                        />
-                      </ListItem>
-                      {index < Math.min(topProdutos.length, 3) - 1 && <Divider />}
-                    </Box>
-                  ))
-                ) : (
-                  <EmptyStatePanel
-                    title="Nenhuma venda esta semana"
-                    compact
-                  />
-                )}
+                          ) : (
+                            <Typography variant="caption" color="text.disabled">
+                              Sem dados
+                            </Typography>
+                          )
+                        }
+                        sx={{ my: 0 }}
+                      />
+                      {product && topProdutos[0] && (
+                        <Box sx={{ width: 40, ml: 1 }}>
+                          <LinearProgress
+                            variant="determinate"
+                            value={Math.max(10, (product.quantidade_vendida / (topProdutos[0].quantidade_vendida || 1)) * 100)}
+                            sx={{ height: 5, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.05) }}
+                          />
+                        </Box>
+                      )}
+                    </ListItem>
+                    {index < 2 && <Divider />}
+                  </Box>
+                ))}
               </List>
             </CardContent>
           </Card>
         </Box>
 
-        {/* Desktop: Gráficos e Top Produtos */}
+        {/* Desktop: Gráficos e Top Produtos (melhorados) */}
         <Grid container spacing={3} sx={{ display: { xs: 'none', md: 'flex' } }}>
           <Grid item xs={12} md={5}>
             <ChartPanel
@@ -463,11 +472,33 @@ const Home = () => {
               <Typography variant="body2" color="text.secondary" gutterBottom mb={2}>
                 Últimos 7 dias
               </Typography>
-              <Box height="100%" display="flex" justifyContent="center" alignItems="center">
+              <Box height="100%" display="flex" flexDirection="column" justifyContent="center" alignItems="center">
                 {pieChartData.labels.length > 0 ? (
-                  <Box width="100%" height="100%">
-                    <Pie data={pieChartData} options={chartOptions} />
-                  </Box>
+                  <>
+                    <Box width="100%" height={220}>
+                      <Pie data={pieChartData} options={chartOptions} />
+                    </Box>
+                    <Box mt={2} width="100%">
+                      {pieChartData.labels.map((label, idx) => {
+                        let value = pieChartData.datasets[0].data[idx];
+                        if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) value = 0;
+                        const total = pieChartData.datasets[0].data.reduce((a, b) => (typeof b === 'number' && isFinite(b) ? a + b : a), 0);
+                        const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+                        return (
+                          <Box key={label} display="flex" alignItems="center" mb={0.5}>
+                            <Box sx={{ width: 14, height: 14, borderRadius: 0.5, bgcolor: pieChartData.datasets[0].backgroundColor[idx], mr: 1 }} />
+                            <Typography variant="body2" sx={{ minWidth: 90 }}>{label}</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                              {formatCurrency(value)}
+                            </Typography>
+                            <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
+                              {percent}%
+                            </Typography>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </>
                 ) : (
                   <EmptyStatePanel
                     title="Nenhuma venda registrada"
@@ -487,42 +518,43 @@ const Home = () => {
                 Mais vendidos da semana
               </Typography>
               <List disablePadding>
-                {topProdutos.length > 0 ? (
-                  topProdutos.slice(0, 5).map((product, index) => (
-                    <Box key={product.name}>
-                      <ListItem
+                {(topProdutos.length > 0 ? topProdutos.slice(0, 5) : Array(5).fill(null)).map((product, index) => (
+                  <Box key={product ? product.name : index}>
+                    <ListItem
+                      sx={{
+                        px: 0,
+                        py: 1.5,
+                        '&:hover': { bgcolor: product ? alpha(theme.palette.primary.main, 0.05) : undefined },
+                        borderRadius: 1,
+                        transition: 'all 0.2s ease',
+                        opacity: product ? 1 : 0.5
+                      }}
+                    >
+                      <Box
                         sx={{
-                          px: 0,
-                          py: 1.5,
-                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) },
+                          width: 32,
+                          height: 32,
                           borderRadius: 1,
-                          transition: 'all 0.2s ease'
+                          bgcolor: product ? (index === 0 ? alpha(theme.palette.success.main, 0.15) : alpha(theme.palette.primary.main, 0.1)) : theme.palette.action.disabledBackground,
+                          color: product ? (index === 0 ? 'success.main' : 'primary.main') : theme.palette.text.disabled,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 'bold',
+                          fontSize: '0.875rem',
+                          mr: 2
                         }}
                       >
-                        <Box
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 1,
-                            bgcolor: alpha(theme.palette.primary.main, 0.1),
-                            color: 'primary.main',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 'bold',
-                            fontSize: '0.875rem',
-                            mr: 2
-                          }}
-                        >
-                          #{index + 1}
-                        </Box>
-                        <ListItemText
-                          primary={
-                            <Typography variant="body1" fontWeight={500}>
-                              {product.name}
-                            </Typography>
-                          }
-                          secondary={
+                        #{index + 1}
+                      </Box>
+                      <ListItemText
+                        primary={
+                          <Typography variant="body1" fontWeight={500}>
+                            {product ? product.name : '---'}
+                          </Typography>
+                        }
+                        secondary={
+                          product ? (
                             <Box display="flex" gap={2} mt={0.5}>
                               <Typography variant="caption" color="text.secondary">
                                 {product.quantidade_vendida} unidades
@@ -530,26 +562,30 @@ const Home = () => {
                               <Typography variant="caption" fontWeight={600} color="primary.main">
                                 {formatCurrency(product.receita_total)}
                               </Typography>
+                              <Typography variant="caption" color="text.disabled">
+                                {topProdutos[0] && product.quantidade_vendida > 0 ? `${Math.round((product.quantidade_vendida / (topProdutos[0].quantidade_vendida || 1)) * 100)}%` : ''}
+                              </Typography>
                             </Box>
-                          }
-                        />
+                          ) : (
+                            <Typography variant="caption" color="text.disabled">
+                              Sem dados
+                            </Typography>
+                          )
+                        }
+                      />
+                      {product && topProdutos[0] && (
                         <Box sx={{ width: 60, ml: 2 }}>
                           <LinearProgress
                             variant="determinate"
-                            value={(product.quantidade_vendida / topProdutos[0].quantidade_vendida) * 100}
-                            sx={{ height: 6, borderRadius: 3 }}
+                            value={Math.max(10, (product.quantidade_vendida / (topProdutos[0].quantidade_vendida || 1)) * 100)}
+                            sx={{ height: 6, borderRadius: 3, bgcolor: alpha(theme.palette.primary.main, 0.05) }}
                           />
                         </Box>
-                      </ListItem>
-                      {index < topProdutos.slice(0, 5).length - 1 && <Divider sx={{ my: 0 }} />}
-                    </Box>
-                  ))
-                ) : (
-                  <EmptyStatePanel
-                    title="Nenhuma venda registrada esta semana"
-                    icon={<InventoryIcon sx={{ fontSize: 48 }} />}
-                  />
-                )}
+                      )}
+                    </ListItem>
+                    {index < 4 && <Divider sx={{ my: 0 }} />}
+                  </Box>
+                ))}
               </List>
             </ChartPanel>
           </Grid>
