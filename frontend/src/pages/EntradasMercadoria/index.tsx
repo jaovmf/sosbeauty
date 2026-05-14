@@ -349,10 +349,7 @@ const EntradasMercadoria = () => {
       errors.price = 'Preço deve ser maior que o custo';
     }
 
-    const stockValue = novoProduto.stock === '' ? 0 : parseInt(novoProduto.stock, 10);
-    if (Number.isNaN(stockValue) || stockValue < 0) {
-      errors.stock = 'Estoque deve ser maior ou igual a zero';
-    }
+
 
     setNovoProdutoErrors(errors);
     return Object.keys(errors).length === 0;

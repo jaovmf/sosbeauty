@@ -330,6 +330,85 @@ const SalesManagement = () => {
                         {venda.shipping_value !== undefined ? formatCurrency(venda.shipping_value) : '-'}
                       </Typography>
                     </Box>
+
+                    {/* Ações mobile - layout melhorado */}
+                    <Box mt={1}>
+                      {/* Primeira linha: Detalhes, Auditoria, Editar */}
+                      <Box display="flex" gap={1} mb={1}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<ViewIcon />}
+                          onClick={() => loadVendaDetails(venda.id)}
+                          sx={{ flex: 1, minWidth: 0 }}
+                        >
+                          Detalhes
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<HistoryEduIcon />}
+                          onClick={() => navigate(`/audit?entityType=venda&entityId=${venda.id}`)}
+                          sx={{ flex: 1, minWidth: 0 }}
+                        >
+                          Auditoria
+                        </Button>
+                        {venda.status === 'pendente' && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<EditIcon />}
+                            onClick={() => navigate(`/sales?preVendaId=${venda.id}`)}
+                            sx={{ flex: 1, minWidth: 0 }}
+                          >
+                            Editar
+                          </Button>
+                        )}
+                      </Box>
+                      {/* Segunda linha: WhatsApp, Cancelar, Confirmar */}
+                      {venda.status === 'pendente' && (
+                        <Box display="flex" gap={1}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<WhatsAppIcon />}
+                            onClick={() => handleSendWhatsApp(venda, 'pre_venda')}
+                            sx={{ flex: 1, minWidth: 0, color: '#25D366', borderColor: '#25D366', '&:hover': { borderColor: '#25D366', background: '#eafff3' } }}
+                          >
+                            WhatsApp
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            startIcon={<CancelIcon />}
+                            onClick={() => {
+                              setVendaToCancel(venda);
+                              setCancelOpen(true);
+                            }}
+                            sx={{ flex: 1, minWidth: 0 }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            startIcon={<CheckIcon />}
+                            onClick={() => {
+                              setSelectedVenda(venda);
+                              setConfirmOpen(true);
+                              if (venda.shipping_value !== undefined && venda.shipping_value !== null) {
+                                setShippingValue(String(venda.shipping_value));
+                              }
+                            }}
+                            sx={{ flex: 1, minWidth: 0 }}
+                          >
+                            Confirmar
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
                   </Paper>
                 ))
               )}

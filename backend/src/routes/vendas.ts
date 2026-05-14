@@ -25,9 +25,7 @@ const processarItensEVenda = async (payload: {
       throw new Error(`Produto ${item.produto_id} não encontrado`);
     }
 
-    if (produto.stock < item.quantidade) {
-      throw new Error(`Estoque insuficiente para produto ${produto.name}`);
-    }
+    // Permitir venda mesmo com estoque zerado ou negativo
 
     const finalPrice = produto.promotional_price && produto.promotional_price > 0 && produto.promotional_price < produto.price
       ? produto.promotional_price
@@ -93,10 +91,7 @@ router.post('/catalog', async (req: Request, res: Response): Promise<void> => {
         return;
       }
 
-      if (produto.stock < item.quantidade) {
-        res.status(400).json({ error: `Estoque insuficiente para produto ${produto.name}` });
-        return;
-      }
+      // Permitir venda mesmo com estoque zerado ou negativo
 
       const finalPrice = produto.promotional_price && produto.promotional_price > 0 && produto.promotional_price < produto.price
         ? produto.promotional_price
@@ -451,10 +446,7 @@ router.put('/:id/confirm', async (req: Request, res: Response): Promise<void> =>
         return;
       }
 
-      if (produto.stock < item.quantidade) {
-        res.status(400).json({ error: `Estoque insuficiente para produto ${item.produto_nome}. Disponível: ${produto.stock}, Necessário: ${item.quantidade}` });
-        return;
-      }
+      // Permitir venda mesmo com estoque zerado ou negativo
     }
 
     // Dar baixa no estoque

@@ -228,10 +228,7 @@ const ProductRegistration = () => {
       }
     }
 
-    const stock = formData.stock === '' ? 0 : parseInt(formData.stock, 10);
-    if (Number.isNaN(stock) || stock < 0) {
-      newErrors.stock = 'Quantidade em estoque deve ser maior ou igual a zero';
-    }
+
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

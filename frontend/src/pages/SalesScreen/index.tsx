@@ -177,25 +177,12 @@ const SalesScreen = () => {
       return;
     }
 
-    if (quantity <= 0) {
-      setError('Quantidade deve ser maior que zero');
-      return;
-    }
 
-    if (quantity > selectedProduct.stock) {
-      setError(`Estoque insuficiente. Disponível: ${selectedProduct.stock} unidades`);
-      return;
-    }
 
     const existingItemIndex = cartItems.findIndex(item => item.product.id === selectedProduct.id);
 
     if (existingItemIndex >= 0) {
       const newQuantity = cartItems[existingItemIndex].quantity + quantity;
-      if (newQuantity > selectedProduct.stock) {
-        setError(`Quantidade total excede o estoque. Disponível: ${selectedProduct.stock} unidades`);
-        return;
-      }
-
       const updatedItems = [...cartItems];
       updatedItems[existingItemIndex].quantity = newQuantity;
       updatedItems[existingItemIndex].total = newQuantity * getProductPrice(selectedProduct);
@@ -222,10 +209,7 @@ const SalesScreen = () => {
     }
 
     const item = cartItems[index];
-    if (newQuantity > item.product.stock) {
-      toast.error(`Estoque insuficiente. Disponível: ${item.product.stock}`);
-      return;
-    }
+    // Permitir atualizar mesmo com estoque zerado/negativo
 
     const updatedItems = [...cartItems];
     updatedItems[index].quantity = newQuantity;
@@ -452,7 +436,7 @@ Se estiver tudo certo, me confirme para finalizarmos sua venda ✅`;
     );
   }
 
-  const produtosDisponiveis = produtos.filter(p => p.stock > 0);
+  const produtosDisponiveis = produtos;
 
   return (
     <Container maxWidth="lg" sx={{ pb: { xs: 12, md: 3 }, px: { xs: 1, sm: 2, md: 3 } }}>
@@ -732,13 +716,12 @@ Se estiver tudo certo, me confirme para finalizarmos sua venda ✅`;
                               <Typography sx={{ px: 2, minWidth: 40, textAlign: 'center' }}>
                                 {item.quantity}
                               </Typography>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleUpdateQuantity(index, item.quantity + 1)}
-                                disabled={item.quantity >= item.product.stock}
-                              >
-                                <AddIcon fontSize="small" />
-                              </IconButton>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleUpdateQuantity(index, item.quantity + 1)}
+                                >
+                                  <AddIcon fontSize="small" />
+                                </IconButton>
                             </Box>
                             <Typography fontWeight="bold" sx={{ minWidth: 80, textAlign: 'right' }}>
                               {formatCurrency(item.total)}

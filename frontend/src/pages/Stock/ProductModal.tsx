@@ -199,10 +199,7 @@ const ProductModal = ({ open, product, produtos, onClose, onSave } : any) => {
       return;
     }
 
-    if (formData.stock < 0) {
-      setError('Estoque não pode ser negativo');
-      return;
-    }
+    // Permitir estoque negativo
 
     if (normalizedPrice <= normalizedCost) {
       setError('Preço de venda deve ser maior que o custo');
